@@ -5,7 +5,7 @@ import { parseLinkedinProfileUrl } from "../../src/linkedinUrl";
 
 // POST { url: "https://www.linkedin.com/in/..." } -> { goal, background, tip }.
 // Only for the user's OWN profile: the app never looks up other guests on LinkedIn.
-// The fetched profile goes to Claude and is then dropped; nothing is stored.
+// The fetched profile goes to Claude; it and the answer stay in server memory for an hour, never on disk.
 
 const MAX_PROFILE_CHARS = 60_000;
 

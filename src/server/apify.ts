@@ -4,6 +4,8 @@
 // NOT VERIFIED from this repo (Apify was unreachable while building). If runs fail,
 // open the actor on apify.com -> Input tab -> "JSON" view and make buildInput()
 // match what it shows for one profile URL.
+import { MINUTE, serverCache } from "./cache";
+
 export const APIFY_ACTOR_ID = "harvestapi~linkedin-profile-scraper";
 
 export const buildInput = (profileUrl: string) => ({ queries: [profileUrl] });
@@ -19,8 +21,16 @@ export class ApifyError extends Error {
   }
 }
 
+// Each profile costs Apify credit, so one is fetched at most once an hour.
+const profileCache = serverCache<unknown>("linkedin", 60 * MINUTE);
+
+/** The profile's first dataset item, reused for an hour. */
+export function fetchLinkedinProfile(profileUrl: string): Promise<unknown> {
+  return profileCache.get(profileUrl, () => runActor(profileUrl));
+}
+
 /** Runs the actor synchronously and returns the first dataset item. */
-export async function fetchLinkedinProfile(profileUrl: string): Promise<unknown> {
+async function runActor(profileUrl: string): Promise<unknown> {
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new ApifyError("Add APIFY_TOKEN to .env and restart the server.", 500);
 

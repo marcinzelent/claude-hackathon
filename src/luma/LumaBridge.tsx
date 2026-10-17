@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import { TtlCache } from "../cache";
 import { LUMA_API_BASES, LUMA_WEB_ORIGIN, MAX_GUEST_PAGES, lumaPaths } from "./config";
 import { findEventApiId, mergeEvents, parseEventPage, parseGuestPage } from "./normalize";
 import type { Guest, LumaEvent } from "../types";
@@ -14,6 +15,10 @@ import type { Guest, LumaEvent } from "../types";
 
 type BridgeResponse = { status: number; body: string };
 type Pending = { resolve: (r: BridgeResponse) => void; reject: (e: Error) => void };
+
+// Luma answers are reused for a few minutes, so revisiting a screen doesn't ask Luma again.
+// Kept in memory only and emptied on reload (e.g. after signing in).
+const CACHE_MS = 3 * 60 * 1000;
 
 type LumaApi = {
   available: boolean;
@@ -40,6 +45,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   const ready = useRef<Promise<void> | null>(null);
   const markReady = useRef<() => void>(() => {});
   const [webviewKey, setWebviewKey] = useState(0);
+  const cache = useRef(new TtlCache<unknown>(CACHE_MS));
   const available = Platform.OS !== "web";
 
   const resetReady = () => {
@@ -71,7 +77,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Tries each known API host until one returns 2xx JSON.
-  const getJson = useCallback(
+  const fetchJson = useCallback(
     async (path: string): Promise<unknown> => {
       let last = "";
       for (const base of LUMA_API_BASES) {
@@ -89,6 +95,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
     },
     [request],
   );
+  const getJson = useCallback((path: string) => cache.current.get(path, () => fetchJson(path)), [fetchJson]);
 
   const api = useMemo<LumaApi>(
     () => ({
@@ -96,6 +103,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
       reload: () => {
         // New promise before the remount, so requests wait for the fresh page instead of the old one.
         resetReady();
+        cache.current.clear();
         setWebviewKey((k) => k + 1);
       },
       isSignedIn: async () => {

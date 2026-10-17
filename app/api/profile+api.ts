@@ -2,7 +2,7 @@ import { fail } from "../../src/server/claude";
 import { profileFromClaude } from "../../src/server/profileFromClaude";
 
 // POST multipart form with field "file" (a PDF) -> { goal, background, tip }.
-// The PDF goes to Claude and is then dropped; nothing is written to disk.
+// The PDF goes to Claude and is then dropped; only Claude's answer stays in server memory for an hour. Nothing is written to disk.
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 

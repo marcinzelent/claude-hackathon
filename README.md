@@ -28,7 +28,7 @@
 ## Privacy by design
 - Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
 - LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn.
-- Guest data only lives in memory and is gone when you close the app. Nothing is saved on a server.
+- Guest data only lives in memory and is gone when you close the app. Nothing is saved to disk on a server: to avoid repeat calls to Claude, Luma and LinkedIn, the server keeps recent answers in memory for up to an hour (`src/server/cache.ts`) and forgets them on restart.
 - It only shows guests that you could already see on Luma yourself.
 - The demo and video use **fake sample guests** (`data/sample-guests.json`), not real people.
 

@@ -1,16 +1,22 @@
 import { LUMA_API_BASES, lumaPaths } from "../luma/config";
 import { parseDiscoverPlace, parseEventPage } from "../luma/normalize";
 import type { LumaEvent } from "../types";
+import { MINUTE, serverCache } from "./cache";
 
 // Server-only: Luma's PUBLIC endpoints (no sign-in). Anything that needs the user's
 // Luma session goes through the phone's hidden WebView instead (src/luma/LumaBridge.tsx).
 
 const MAX_DISCOVER_PAGES = 2;
-const CACHE_MS = 10 * 60 * 1000;
-const cityCache = new Map<string, { at: number; events: LumaEvent[] }>();
+// Every public Luma answer is reused for 5 minutes; a city's event list for 10.
+const lumaCache = serverCache<unknown>("luma", 5 * MINUTE);
+const cityCache = serverCache<LumaEvent[] | null>("lumaCity", 10 * MINUTE);
 
 /** GETs a public Luma path, trying each API host; null when none answers with 2xx JSON. */
-export async function lumaJson(path: string): Promise<unknown> {
+export function lumaJson(path: string): Promise<unknown> {
+  return lumaCache.get(path, () => fetchLumaJson(path), (v) => v !== null);
+}
+
+async function fetchLumaJson(path: string): Promise<unknown> {
   for (const base of LUMA_API_BASES) {
     try {
       const res = await fetch(base + path, { signal: AbortSignal.timeout(10000) });
@@ -23,10 +29,11 @@ export async function lumaJson(path: string): Promise<unknown> {
 }
 
 /** Upcoming public events for a city slug ("berlin"), or null if Luma has no such city. */
-export async function cityEvents(slug: string): Promise<LumaEvent[] | null> {
-  const cached = cityCache.get(slug);
-  if (cached && Date.now() - cached.at < CACHE_MS) return cached.events;
+export function cityEvents(slug: string): Promise<LumaEvent[] | null> {
+  return cityCache.get(slug, () => fetchCityEvents(slug), (v) => v !== null);
+}
 
+async function fetchCityEvents(slug: string): Promise<LumaEvent[] | null> {
   const placeId = parseDiscoverPlace(await lumaJson(lumaPaths.resolveSlug(slug)));
   if (!placeId) return null;
 
@@ -40,7 +47,5 @@ export async function cityEvents(slug: string): Promise<LumaEvent[] | null> {
   }
   // Only events that haven't ended yet.
   const now = new Date().toISOString();
-  const upcoming = events.filter((e) => (e.endAt ?? e.startAt ?? now) >= now);
-  cityCache.set(slug, { at: Date.now(), events: upcoming });
-  return upcoming;
+  return events.filter((e) => (e.endAt ?? e.startAt ?? now) >= now);
 }

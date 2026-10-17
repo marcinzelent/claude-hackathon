@@ -2,8 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { RANK_SYSTEM_PROMPT, rankUserPrompt } from "../../prompts/rank";
+import { MINUTE, cacheKey, serverCache } from "../../src/server/cache";
 import { readTeamEvent } from "../../src/server/teamEvent";
-import type { Guest, Profile } from "../../src/types";
+import type { Guest, Match, Profile } from "../../src/types";
 
 // Runs on the Expo dev/server, never on the phone, so the API key stays in .env.
 
@@ -23,6 +24,9 @@ const MatchesSchema = z.object({
 
 let client: Anthropic | null = null;
 
+// Opening the same event again with the same profile reuses the ranking for an hour.
+const rankCache = serverCache<Match[] | null>("rank", 60 * MINUTE);
+
 export async function POST(request: Request): Promise<Response> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json({ error: "Add ANTHROPIC_API_KEY to .env and restart the server." }, { status: 500 });
@@ -40,7 +44,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Tell us your goal and load some guests first." }, { status: 400 });
   }
 
-  // Only the public profile fields Claude needs; nothing is stored.
+  // Only the public profile fields Claude needs; the ranking stays in server memory for an hour, never on disk.
   // Teammates in the demo event also get their (consented) LinkedIn profile, kept server-side.
   const linkedin = (await readTeamEvent())?.linkedin ?? {};
   const slim = guests.slice(0, MAX_GUESTS).map((g) => ({
@@ -51,8 +55,8 @@ export async function POST(request: Request): Promise<Response> {
     ...(linkedin[g.id] ? { linkedin: linkedin[g.id] } : {}),
   }));
 
-  try {
-    const response = await client.beta.messages.parse({
+  const ask = async (anthropic: Anthropic): Promise<Match[] | null> => {
+    const response = await anthropic.beta.messages.parse({
       model: "claude-opus-5-5",
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
@@ -62,13 +66,18 @@ export async function POST(request: Request): Promise<Response> {
       messages: [{ role: "user", content: rankUserPrompt(profile, slim) }],
     });
 
-    if (response.stop_reason === "refusal" || !response.parsed_output) {
-      return Response.json({ error: "Claude could not rank this list. Try again." }, { status: 502 });
-    }
-    const matches = response.parsed_output.matches.map((m) => ({
+    if (response.stop_reason === "refusal" || !response.parsed_output) return null;
+    return response.parsed_output.matches.map((m) => ({
       ...m,
       score: Math.max(0, Math.min(100, Math.round(m.score))),
     }));
+  };
+
+  try {
+    const anthropic = client;
+    const key = cacheKey(profile.goal.trim(), profile.background?.trim(), slim);
+    const matches = await rankCache.get(key, () => ask(anthropic), (v) => v !== null);
+    if (!matches) return Response.json({ error: "Claude could not rank this list. Try again." }, { status: 502 });
     return Response.json({ matches });
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
