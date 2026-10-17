@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  citySlug,
   findEventApiId,
   mergeEvents,
+  parseDiscoverPlace,
   normalizeEvent,
   normalizeGuest,
   parseEventLookup,
@@ -118,5 +120,36 @@ describe("events", () => {
       ["evt-b", undefined],
       ["evt-a", 5],
     ]);
+  });
+});
+
+describe("discover", () => {
+  it("reads the city place id from /url?url=berlin (shape probed from api2.luma.com)", () => {
+    expect(parseDiscoverPlace({ kind: "discover-place", data: { place: { api_id: "discplace-gCfX0s3E9Hgo3rG", slug: "berlin" } } })).toBe(
+      "discplace-gCfX0s3E9Hgo3rG",
+    );
+    expect(parseDiscoverPlace({ kind: "event", data: {} })).toBeNull();
+  });
+
+  it("keeps host calendar and city from discover entries", () => {
+    const entry = {
+      api_id: "evt-5u8yK2SYWvklHg0",
+      calendar: { name: "{Tech: Europe}" },
+      guest_count: 460,
+      event: { api_id: "evt-5u8yK2SYWvklHg0", name: "Nebius Build Week Hackathon", url: "big-gtc-hack", start_at: "2026-10-18T07:30:00.000Z", end_at: "2026-10-18T18:00:00.000Z", geo_address_info: { city: "Berlin" } },
+    };
+    expect(parseEventPage({ entries: [entry] }).events[0]).toMatchObject({
+      slug: "big-gtc-hack",
+      hostName: "{Tech: Europe}",
+      city: "Berlin",
+      guestCount: 460,
+      endAt: "2026-10-18T18:00:00.000Z",
+    });
+  });
+
+  it("turns city names into Luma slugs", () => {
+    expect(citySlug(" Berlin ")).toBe("berlin");
+    expect(citySlug("New York")).toBe("new-york");
+    expect(citySlug("München")).toBe("munchen");
   });
 });

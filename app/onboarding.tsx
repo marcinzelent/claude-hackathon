@@ -33,6 +33,14 @@ export default function Onboarding() {
           onChangeText={(background) => setProfile({ ...profile, background })}
           multiline
         />
+        <Label>Your city</Label>
+        <TextInput
+          style={styles.input}
+          placeholder="Berlin"
+          value={profile.city ?? ""}
+          onChangeText={(city) => setProfile({ ...profile, city })}
+        />
+        <Text style={styles.hint}>We'll suggest public events there that fit your goal.</Text>
 
         <Button
           title="Continue"

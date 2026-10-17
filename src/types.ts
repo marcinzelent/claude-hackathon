@@ -20,13 +20,20 @@ export type LumaEvent = {
   slug: string; // luma.com/<slug>
   name: string;
   startAt?: string; // ISO date
+  endAt?: string;
+  city?: string;
+  hostName?: string; // the Luma calendar that runs it
   coverUrl?: string;
   guestCount?: number;
 };
 
+/** Claude's pick of a public event for this job seeker. */
+export type EventPick = { id: string; score: number; why: string };
+
 export type Profile = {
   goal: string; // e.g. "Land my first job as an ML engineer"
   background: string; // e.g. "Bootcamp grad, 3 years as a data analyst"
+  city?: string; // for event suggestions, e.g. "Berlin"
 };
 
 export type Match = {

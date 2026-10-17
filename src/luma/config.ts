@@ -14,6 +14,10 @@ export const lumaPaths = {
     `/event/get-guest-list?event_api_id=${encodeURIComponent(eventApiId)}` +
     `&pagination_limit=100` +
     (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : ""),
+  // Public "Discover" list for a city (no sign-in). The place id comes from resolveSlug("berlin").
+  discover: (placeApiId: string, cursor?: string) =>
+    `/discover/get-paginated-events?discover_place_api_id=${encodeURIComponent(placeApiId)}&pagination_limit=50` +
+    (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : ""),
   // The signed-in user's own events (attending and hosting). Answers 401 when signed out,
   // so it doubles as the sign-in check. (/user/get-self answered 404 when probed.)
   myEvents: (period: "future" | "past", cursor?: string) =>

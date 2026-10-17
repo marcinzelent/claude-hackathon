@@ -95,14 +95,21 @@ export function normalizeEvent(entry: unknown, guestCount?: unknown): LumaEvent 
   const name = str(e.name);
   if (!id?.startsWith("evt-") || !name) return null;
   const count = typeof guestCount === "number" ? guestCount : entry.guest_count;
-  return {
+  const geo = isObj(e.geo_address_info) ? e.geo_address_info : {};
+  const calendar = isObj(entry.calendar) ? entry.calendar : {};
+  const event: LumaEvent = {
     id,
     slug: str(e.url) ?? id,
     name,
     startAt: str(e.start_at),
+    endAt: str(e.end_at),
+    city: str(geo.city),
+    hostName: str(calendar.name),
     coverUrl: str(e.cover_url),
     guestCount: typeof count === "number" ? count : undefined,
   };
+  // Drop empty optional fields so merged events don't overwrite real values with undefined.
+  return Object.fromEntries(Object.entries(event).filter(([, v]) => v !== undefined)) as LumaEvent;
 }
 
 /** Reads one page of the signed-in user's events (/home/get-events). */
@@ -119,6 +126,23 @@ export function parseEventLookup(payload: unknown): LumaEvent | null {
   if (!isObj(payload) || payload.kind !== "event" || !isObj(payload.data)) return null;
   return normalizeEvent(payload.data, payload.data.guest_count);
 }
+
+/** Reads the discover-place id ("discplace-...") from a /url?url=<city> response. */
+export function parseDiscoverPlace(payload: unknown): string | null {
+  if (!isObj(payload) || payload.kind !== "discover-place" || !isObj(payload.data)) return null;
+  const place = isObj(payload.data.place) ? payload.data.place : {};
+  return str(place.api_id) ?? null;
+}
+
+/** Turns a city name into Luma's discover slug: "Berlin" -> "berlin", "New York" -> "new-york". */
+export const citySlug = (city: string) =>
+  city
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 /** Merges event lists, dropping duplicates and sorting by start time (soonest first). */
 export function mergeEvents(...lists: LumaEvent[][]): LumaEvent[] {

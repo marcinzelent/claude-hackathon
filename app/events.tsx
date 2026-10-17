@@ -1,13 +1,13 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
-import { loadLinkedEvents, lookupEvent, saveLinkedEvents } from "../src/luma/events";
+import { discoverEvents, loadLinkedEvents, lookupEvent, saveLinkedEvents, type Discovery } from "../src/luma/events";
 import { mergeEvents, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
-import type { Guest, LumaEvent } from "../src/types";
-import { Button, Label, colors } from "../src/ui";
+import type { EventPick, Guest, LumaEvent } from "../src/types";
+import { Button, Label, colors, scoreColor } from "../src/ui";
 
 type LumaState = "loading" | "signedOut" | "ready" | "error" | "unavailable";
 
@@ -25,6 +25,30 @@ export default function Events() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [discovery, setDiscovery] = useState<Discovery | null>(null);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+  const discoverKey = useRef("");
+
+  // Ask Claude for public events in the user's city, but only when the profile actually changed.
+  const loadDiscovery = useCallback(async (force = false) => {
+    const key = JSON.stringify([profile.goal, profile.background, profile.city]);
+    if (!force && key === discoverKey.current) return;
+    discoverKey.current = key;
+    setDiscovery(null);
+    setDiscoverError(null);
+    try {
+      const result = await discoverEvents(profile);
+      if (discoverKey.current === key) setDiscovery(result);
+    } catch (e) {
+      if (discoverKey.current === key) setDiscoverError(e instanceof Error ? e.message : "Couldn't load suggestions.");
+    }
+  }, [profile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDiscovery();
+    }, [loadDiscovery]),
+  );
 
   // Reload on every focus, so coming back from the Luma sign-in shows your events.
   useFocusEffect(
@@ -99,6 +123,12 @@ export default function Events() {
   };
 
   const events = mergeEvents(myEvents, linked);
+  const mine = new Set(events.map((e) => e.id));
+  const byId = new Map((discovery?.events ?? []).map((e) => [e.id, e]));
+  const picks = (discovery?.picks ?? [])
+    .filter((p) => !mine.has(p.id) && byId.has(p.id))
+    .map((p) => ({ pick: p, event: byId.get(p.id)! }));
+  const city = profile.city?.trim() || "Berlin";
 
   return (
     <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
@@ -135,6 +165,39 @@ export default function Events() {
         <EventCard key={event.id} event={event} loading={openingId === event.id} onPress={() => openEvent(event)} />
       ))}
       {status && <Text style={styles.hint}>{status}</Text>}
+
+      <Label>Picked for you in {discovery?.city || city}</Label>
+      {!discovery && !discoverError && (
+        <View style={styles.row}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={styles.hint}>Claude is reading this week's events in {city}…</Text>
+        </View>
+      )}
+      {discoverError && (
+        <>
+          <Text style={styles.error}>{discoverError}</Text>
+          <Button title="Try again" variant="secondary" onPress={() => loadDiscovery(true)} />
+        </>
+      )}
+      {discovery && picks.length === 0 && (
+        <Text style={styles.hint}>
+          Nothing in the {discovery.events.length} upcoming public events fits your goal right now. Check back in a few days.
+        </Text>
+      )}
+      {discovery && picks.length > 0 && (
+        <Text style={styles.hint}>
+          {picks.length} of {discovery.events.length} upcoming public events on Luma fit your goal.
+        </Text>
+      )}
+      {picks.map(({ pick, event }) => (
+        <EventCard
+          key={event.id}
+          event={event}
+          pick={pick}
+          loading={openingId === event.id}
+          onPress={() => openEvent(event)}
+        />
+      ))}
 
       <Label>Add an event by link</Label>
       <TextInput
@@ -174,7 +237,17 @@ export default function Events() {
   );
 }
 
-function EventCard({ event, loading, onPress }: { event: LumaEvent; loading: boolean; onPress: () => void }) {
+function EventCard({
+  event,
+  pick,
+  loading,
+  onPress,
+}: {
+  event: LumaEvent;
+  pick?: EventPick;
+  loading: boolean;
+  onPress: () => void;
+}) {
   const when = event.startAt
     ? new Date(event.startAt).toLocaleString(undefined, {
         weekday: "short",
@@ -192,13 +265,30 @@ function EventCard({ event, loading, onPress }: { event: LumaEvent; loading: boo
         <View style={[styles.cover, { backgroundColor: colors.accentSoft }]} />
       )}
       <View style={{ flex: 1 }}>
-        <Text style={styles.name} numberOfLines={2}>
-          {event.name}
-        </Text>
+        <View style={styles.row}>
+          <Text style={[styles.name, { flex: 1 }]} numberOfLines={2}>
+            {event.name}
+          </Text>
+          {pick && (
+            <View style={[styles.score, { backgroundColor: scoreColor(pick.score) }]}>
+              <Text style={styles.scoreText}>{pick.score}</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.meta}>
-          {[when, event.guestCount !== undefined ? `${event.guestCount} going` : null].filter(Boolean).join(" · ")}
+          {[when, event.hostName, event.guestCount ? `${event.guestCount} going` : event.guestCount === 0 ? "0 going" : null]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
-        <Text style={styles.cta}>{loading ? "Loading guests…" : "Find who to meet →"}</Text>
+        {pick && <Text style={styles.why}>{pick.why}</Text>}
+        <View style={styles.row}>
+          <Text style={styles.cta}>{loading ? "Loading guests…" : "Find who to meet →"}</Text>
+          {pick && (
+            <Pressable onPress={() => Linking.openURL(`https://luma.com/${event.slug}`)} hitSlop={8}>
+              <Text style={styles.cta}>View on Luma</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -233,4 +323,8 @@ const styles = StyleSheet.create({
   cover: { width: 64, height: 64, borderRadius: 10 },
   name: { fontSize: 16, fontWeight: "700", color: colors.text },
   cta: { color: colors.accent, fontWeight: "600", marginTop: 6 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  why: { color: colors.text, marginTop: 6, lineHeight: 20 },
+  score: { borderRadius: 999, minWidth: 36, paddingHorizontal: 8, paddingVertical: 3, alignItems: "center" },
+  scoreText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 });
