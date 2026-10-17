@@ -49,6 +49,8 @@ npx expo start          # press w for web, or scan the QR code with Expo Go on y
 
 Paste mode always works as a fallback. The full design is in [docs/specs/luma-connection.md](docs/specs/luma-connection.md).
 
+**The import is a background step.** The "Import guest list" button and the Guest list screen are test and demo screens. In the real flow the guest list goes straight to the next feature (LinkedIn research and ranking), and that feature's screen is what the user sees next. How to call the Luma connection and the JSON it returns: [docs/luma-connection-handoff.md](docs/luma-connection-handoff.md).
+
 ## Project layout
 | Path | What it is |
 |---|---|
