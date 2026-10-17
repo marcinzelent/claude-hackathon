@@ -1,5 +1,9 @@
+import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput } from "react-native";
+import { importCv, importLinkedin, type ImportedProfile } from "../src/api";
+import { parseLinkedinProfileUrl } from "../src/linkedinUrl";
 import { useStore } from "../src/store";
 import { Button, Label, colors } from "../src/ui";
 
@@ -8,6 +12,39 @@ export default function Onboarding() {
   const router = useRouter();
   const { profile, setProfile } = useStore();
   const needsGoal = !profile.goal.trim();
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [importing, setImporting] = useState<"cv" | "linkedin" | null>(null);
+  const [importNote, setImportNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Claude fills in goal + background from your own LinkedIn profile or CV.
+  const runImport = async (kind: "cv" | "linkedin", label: string, load: () => Promise<ImportedProfile>) => {
+    setError(null);
+    setImportNote(null);
+    setImporting(kind);
+    try {
+      const { goal, background, tip } = await load();
+      setProfile({ ...profile, goal, background });
+      setImportNote(tip ? `Filled in from your ${label}. Tip: ${tip}` : `Filled in from your ${label}. Edit anything that's off.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Import failed.");
+    } finally {
+      setImporting(null);
+    }
+  };
+
+  const importFromLinkedin = () => {
+    const url = parseLinkedinProfileUrl(linkedinUrl);
+    if (!url) return setError("Paste your LinkedIn profile link, like linkedin.com/in/your-name.");
+    return runImport("linkedin", "LinkedIn profile", () => importLinkedin(url));
+  };
+
+  const pickCv = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    if (picked.canceled || !picked.assets[0]) return;
+    const file = picked.assets[0];
+    await runImport("cv", "CV", () => importCv(file));
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -17,6 +54,38 @@ export default function Onboarding() {
           Going to an AI meetup to find your next job? Tell us what you're after. Claude reads the guest list and
           tells you who to meet, why, how to start the conversation, and what you can learn from them.
         </Text>
+
+        <Label>Your LinkedIn profile link</Label>
+        <TextInput
+          style={styles.input}
+          placeholder="linkedin.com/in/your-name"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          value={linkedinUrl}
+          onChangeText={setLinkedinUrl}
+        />
+        <Button
+          title="Import from LinkedIn"
+          variant="secondary"
+          onPress={importFromLinkedin}
+          loading={importing === "linkedin"}
+          disabled={importing !== null || !linkedinUrl.trim()}
+        />
+        {importing === "linkedin" && <Text style={styles.hint}>Fetching your profile, this can take up to a minute…</Text>}
+        <Button
+          title="Or upload your CV / LinkedIn PDF"
+          variant="secondary"
+          onPress={pickCv}
+          loading={importing === "cv"}
+          disabled={importing !== null}
+        />
+        <Text style={styles.hint}>
+          Only your own profile is imported. LinkedIn PDF: on linkedin.com (desktop), open your profile, then Resources
+          (or More), then Save to PDF.
+        </Text>
+        {importNote && <Text style={styles.note}>{importNote}</Text>}
+        {error && <Text style={styles.error}>{error}</Text>}
 
         <Label>What job are you looking for?</Label>
         <TextInput
@@ -69,4 +138,6 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 70, textAlignVertical: "top" },
   hint: { marginTop: 10, color: colors.muted, fontSize: 13, lineHeight: 18 },
+  note: { marginTop: 8, color: colors.good, fontSize: 14, lineHeight: 19 },
+  error: { marginTop: 8, color: colors.error, fontSize: 15 },
 });

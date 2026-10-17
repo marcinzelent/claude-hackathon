@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiBase } from "../rank/client";
+import { apiBase } from "../api";
 import type { EventPick, LumaEvent, Profile } from "../types";
 
 // Events the user added by link. Only public event details are saved on the device.

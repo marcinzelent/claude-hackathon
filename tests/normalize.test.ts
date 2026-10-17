@@ -13,6 +13,7 @@ import {
   parsePastedGuests,
   toJsonl,
 } from "../src/luma/normalize";
+import { parseLinkedinProfileUrl } from "../src/linkedinUrl";
 
 describe("parseEventSlug", () => {
   it("accepts full links, lu.ma links and bare slugs", () => {
@@ -151,5 +152,17 @@ describe("discover", () => {
     expect(citySlug(" Berlin ")).toBe("berlin");
     expect(citySlug("New York")).toBe("new-york");
     expect(citySlug("München")).toBe("munchen");
+  });
+});
+
+describe("parseLinkedinProfileUrl", () => {
+  it("canonicalises profile links", () => {
+    expect(parseLinkedinProfileUrl("linkedin.com/in/ada-example")).toBe("https://www.linkedin.com/in/ada-example");
+    expect(parseLinkedinProfileUrl("https://de.linkedin.com/in/ada-example/?trk=x")).toBe("https://www.linkedin.com/in/ada-example");
+  });
+  it("rejects anything that isn't a profile", () => {
+    expect(parseLinkedinProfileUrl("https://www.linkedin.com/company/acme")).toBeNull();
+    expect(parseLinkedinProfileUrl("https://evil.com/linkedin.com/in/x")).toBeNull();
+    expect(parseLinkedinProfileUrl("")).toBeNull();
   });
 });
