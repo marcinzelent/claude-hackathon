@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { addLinkedinGuesses } from "../src/linkedinGuess";
 import { useStore } from "../src/store";
 import type { GuestLinks } from "../src/types";
 import { Button, colors } from "../src/ui";
@@ -16,8 +18,29 @@ const LINK_LABELS: Record<keyof GuestLinks, string> = {
 // The import result: every guest with their connected profiles. A test screen; on main the list goes straight to ranking.
 export default function Guests() {
   const router = useRouter();
-  const { eventName, guests, profile } = useStore();
+  const { eventName, guests, setGuests, profile } = useStore();
   const withProfiles = guests.filter((g) => Object.keys(g.links).length > 0).length;
+  const [search, setSearch] = useState<string | null>(null);
+  const searchedFor = useRef<string | null>(null);
+
+  // In the background, look for LinkedIn profiles of guests who didn't connect one (once per event).
+  // Leaving the screen drops the answer; the server keeps it for an hour, so coming back is quick.
+  useEffect(() => {
+    if (searchedFor.current === eventName || !guests.some((g) => !g.links.linkedin)) return;
+    searchedFor.current = eventName;
+    let cancelled = false;
+    setSearch("Looking for LinkedIn profiles of guests who didn't link one…");
+    addLinkedinGuesses(guests)
+      .then((r) => {
+        if (cancelled) return;
+        setGuests(eventName, r.guests);
+        setSearch(r.found ? `Found ${r.found} possible LinkedIn profile(s).` : "No extra LinkedIn profiles found.");
+      })
+      .catch((e) => !cancelled && setSearch(e instanceof Error ? e.message : "LinkedIn search failed."));
+    return () => {
+      cancelled = true;
+    };
+  }, [eventName]);
 
   if (guests.length === 0) {
     return <Text style={styles.center}>No guests loaded yet. Go back and import an event.</Text>;
@@ -29,6 +52,7 @@ export default function Guests() {
       <Text style={styles.meta}>
         {guests.length} guests · {withProfiles} with connected profiles
       </Text>
+      {search && <Text style={styles.note}>{search}</Text>}
 
       <View style={{ marginTop: 16 }}>
         {guests.map((g) => (
@@ -48,7 +72,13 @@ export default function Guests() {
                   <Text style={styles.link}>Luma</Text>
                 </Pressable>
               )}
+              {g.linkedinGuess && (
+                <Pressable onPress={() => Linking.openURL(g.linkedinGuess!.url)}>
+                  <Text style={styles.link}>Possible LinkedIn</Text>
+                </Pressable>
+              )}
             </View>
+            {g.linkedinGuess && <Text style={styles.guess}>Found by search: {g.linkedinGuess.reason}</Text>}
           </View>
         ))}
       </View>
@@ -84,4 +114,5 @@ const styles = StyleSheet.create({
   bio: { color: colors.muted, marginTop: 4, lineHeight: 20 },
   links: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 8 },
   link: { color: colors.accent, fontWeight: "600" },
+  guess: { color: colors.muted, fontSize: 13, marginTop: 6, lineHeight: 18 },
 });

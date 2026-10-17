@@ -24,6 +24,13 @@ export type Guest = {
   avatarUrl?: string;
   lumaUrl?: string;
   links: GuestLinks;
+  /** A LinkedIn profile found by name search for a guest who didn't connect one. Always a possible match. */
+  linkedinGuess?: LinkedinGuess;
+};
+
+export type LinkedinGuess = {
+  url: string;
+  reason: string; // why the profile looks like this guest, e.g. "Same name, and both mention Acme AI in Berlin"
 };
 
 export type Profile = {

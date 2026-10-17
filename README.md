@@ -23,6 +23,7 @@
 - **Model:** `claude-opus-5-5` through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Server-side refusal fallbacks are switched on (`fallbacks: "default"`).
 - **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
 - **What Claude produces:** a score, a one-line reason, a conversation opener and a learning tip for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
+- **Finding LinkedIn profiles (demo event only):** for guests with a full name but no LinkedIn link, Claude's web search suggests candidates, Apify loads them, and Claude checks that more than the name agrees. A hit shows as "Possible LinkedIn" (`app/api/find-linkedin+api.ts`, prompts in `prompts/findLinkedin.ts`). Not for real events without the guests' consent.
 - **Where:** the call runs in a server route (`app/api/rank+api.ts`), so the API key never reaches the phone. The prompt lives in `prompts/rank.ts`.
 
 ## Privacy by design
@@ -61,6 +62,7 @@ Paste mode always works as a fallback. The full design is in [docs/specs/luma-co
 | `app/api/luma+api.ts` | Narrow relay to Luma for the web version (ticket links only) |
 | `app/login.tsx` | Luma sign-in (and manual sign-out) inside the app |
 | `app/api/rank+api.ts` | Server route that calls Claude |
+| `app/api/find-linkedin+api.ts` | Finds possible LinkedIn profiles for guests who didn't link one (web search, Apify, Claude) |
 | `prompts/rank.ts` | The Claude prompt (tweak it here) |
 | `src/luma/` | Luma client (all endpoint logic, tested), hidden-WebView bridge, endpoint config, parsing |
 | `data/sample-guests.json` | Fake guests for the demo |
@@ -88,5 +90,6 @@ Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus found
 - [React Native](https://reactnative.dev) and [react-native-web](https://necolas.github.io/react-native-web/)
 - [react-native-webview](https://github.com/react-native-webview/react-native-webview)
 - [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
+- [Apify](https://apify.com) (LinkedIn profiles, actor harvestapi/linkedin-profile-scraper)
 - [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
 - [Luma](https://luma.com) (event data, through the user's own signed-in session)
