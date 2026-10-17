@@ -19,6 +19,7 @@ const MatchesSchema = z.object({
       why: z.string(),
       opener: z.string(),
       learn: z.string(),
+      terms: z.array(z.object({ term: z.string(), meaning: z.string() })),
     }),
   ),
 });

@@ -14,15 +14,15 @@
    - **Your Luma events (mobile app):** sign in to Luma once inside the app to see the events you're going to, or add any event by its link.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
-3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener) and *learn from them*, plus the person's public links.
-4. You can export the ranked list as JSONL.
+3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener), *learn from them*, and *words to know*: AI terms from that person's profile (like "MLOps" or "RAG") that you tap to get a one-line plain explanation, so you can follow the conversation. You also see the person's public links.
+4. *Share my plan* sends your top 5 people, why to meet them and what to say, as plain text.
 
 ## How Claude is used
 - **Model:** `claude-haiku-5-5` (set once in `src/server/claude.ts`) through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Haiku is fast and cheap, which suits a live demo.
 - **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
 - **Event suggestions** (`app/api/discover+api.ts`, prompt in `prompts/events.ts`): Claude reads the names and hosts of your city's public Luma events and picks up to 8 that fit your goal.
 - **CV import** (`app/api/profile+api.ts`, prompt in `prompts/cvImport.ts`): Claude reads the uploaded PDF and suggests your target role and a short background, leaving out contact details. The PDF isn't stored.
-- **What Claude produces:** a score, a one-line reason, a conversation opener and a learning tip for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
+- **What Claude produces:** a score, a one-line reason, a conversation opener, a learning tip and up to 3 AI terms from their profile explained for a newcomer, for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
 - **Where:** the call runs in a server route (`app/api/rank+api.ts`), so the API key never reaches the phone. The prompt lives in `prompts/rank.ts`.
 
 ## Privacy by design

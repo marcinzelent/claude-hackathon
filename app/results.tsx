@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
-import { toJsonl } from "../src/luma/normalize";
 import { rankGuests } from "../src/api";
 import { useStore } from "../src/store";
-import type { RankedGuest } from "../src/types";
+import type { Match, RankedGuest } from "../src/types";
 import { Button, colors, scoreColor } from "../src/ui";
 
 const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", website: "Website" } as const;
@@ -37,7 +36,17 @@ export default function Results() {
       .sort((a, b) => (b.match?.score ?? -1) - (a.match?.score ?? -1));
   }, [guests, matches]);
 
-  const exportJsonl = () => Share.share({ message: toJsonl(ranked) });
+  // A plain-text plan for the night: the top people, why, and what to say.
+  const sharePlan = () =>
+    Share.share({
+      message: [
+        `Who to meet at ${eventName}`,
+        ...ranked
+          .filter((g) => g.match)
+          .slice(0, 5)
+          .map((g, i) => `\n${i + 1}. ${g.name} (${g.match!.score})\n${g.match!.why}\nSay hi: “${g.match!.opener}”`),
+      ].join("\n"),
+    });
 
   if (guests.length === 0) {
     return <Text style={styles.center}>No guests loaded yet. Go back and pick an event.</Text>;
@@ -66,7 +75,7 @@ export default function Results() {
               <Button title="Try again" onPress={run} />
             </>
           )}
-          {matches && <Button title="Export as JSONL" variant="secondary" onPress={exportJsonl} />}
+          {matches && <Button title="Share my plan" variant="secondary" onPress={sharePlan} />}
         </View>
       }
       renderItem={({ item }) => <GuestCard guest={item} />}
@@ -93,6 +102,29 @@ function Avatar({ name, url }: { name: string; url?: string }) {
   );
 }
 
+// AI jargon from the guest's profile: tap a term to see what it means before you talk to them.
+function Terms({ terms }: { terms: NonNullable<Match["terms"]> }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const meaning = terms.find((t) => t.term === open)?.meaning;
+  return (
+    <>
+      <Text style={styles.section}>Words to know</Text>
+      <View style={styles.chips}>
+        {terms.map((t) => (
+          <Pressable
+            key={t.term}
+            onPress={() => setOpen(open === t.term ? null : t.term)}
+            style={[styles.chip, open === t.term && styles.chipOpen]}
+          >
+            <Text style={[styles.chipText, open === t.term && { color: "#fff" }]}>{t.term}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {meaning && <Text style={styles.body}>{meaning}</Text>}
+    </>
+  );
+}
+
 function GuestCard({ guest }: { guest: RankedGuest }) {
   const m = guest.match;
   return (
@@ -110,6 +142,7 @@ function GuestCard({ guest }: { guest: RankedGuest }) {
       {m && (
         <>
           <Text style={styles.why}>{m.why}</Text>
+          {m.terms && m.terms.length > 0 && <Terms terms={m.terms} />}
           <Text style={styles.section}>Say hi</Text>
           <Text style={styles.body}>“{m.opener}”</Text>
           <Text style={styles.section}>Learn from them</Text>
@@ -162,4 +195,8 @@ const styles = StyleSheet.create({
   body: { color: colors.text, marginTop: 2, lineHeight: 21 },
   links: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 10 },
   link: { color: colors.accent, fontWeight: "600" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
+  chip: { backgroundColor: colors.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  chipOpen: { backgroundColor: colors.accent },
+  chipText: { color: colors.accent, fontWeight: "600", fontSize: 13 },
 });

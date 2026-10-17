@@ -15,6 +15,9 @@ For every guest, return:
 - opener: a friendly first line the job seeker could actually say to them at the event.
 - learn: one concrete thing about AI work the job seeker could learn or ask from this person,
   in plain language a newcomer to AI understands.
+- terms: up to 3 AI or tech terms that appear in their bio or LinkedIn (e.g. "RAG", "MLOps", "evals"), each with a
+  one-sentence meaning a newcomer to AI understands, so the job seeker can follow the conversation.
+  Only terms that really appear in the profile; an empty list if there are none.
 
 Be honest when a profile is thin. Do not guess anyone's gender, age, nationality or other personal traits.`;
 

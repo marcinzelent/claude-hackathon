@@ -46,6 +46,7 @@ export type Match = {
   why: string;
   opener: string;
   learn: string;
+  terms?: { term: string; meaning: string }[]; // AI jargon from their profile, explained for a newcomer
 };
 
 export type RankedGuest = Guest & { match?: Match };
