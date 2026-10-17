@@ -6,6 +6,8 @@ Repo: claude-hackathon (Claude Impact Lab Berlin, deadline 16:00)
 Status: APPROVED
 Mode: Builder
 
+> **Update 12:50:** the team adopted the existing Expo app (RoomRadar, commit `ba42073`) instead of the Python/HTML stack below. Apify enrichment is now a stretch item. The current build contract is [docs/SPEC.md](../SPEC.md).
+
 ## Problem Statement
 - **Audience:** job seekers (career changers, newcomers to Berlin, recent grads) who go to networking events to find their next role.
 - **Their problem with AI today:** they know AI exists, but don't use it for the hardest part of job hunting: walking up to a stranger at an event. They spend the evening with whoever is standing nearest and leave without the one conversation that mattered.
