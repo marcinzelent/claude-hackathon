@@ -1,26 +1,16 @@
-import { LUMA_API_BASES, lumaPaths } from "../../src/luma/config";
+import { lumaPaths } from "../../src/luma/config";
 import { parseEventLookup, parseEventSlug } from "../../src/luma/normalize";
+import { fail } from "../../src/server/claude";
+import { lumaJson } from "../../src/server/luma";
 
-// Looks up one event's public details (name, date, cover) from its link.
+// GET ?link=<luma event link> -> { event }: one event's public details (name, date, cover).
 // Uses Luma's public endpoint, no sign-in, so it also works on web.
 
 export async function GET(request: Request): Promise<Response> {
   const slug = parseEventSlug(new URL(request.url).searchParams.get("link") ?? "");
-  if (!slug) {
-    return Response.json({ error: "Paste a Luma event link, like luma.com/my-event." }, { status: 400 });
-  }
+  if (!slug) return fail(400, "Paste a Luma event link, like luma.com/my-event.");
 
-  for (const base of LUMA_API_BASES) {
-    try {
-      const res = await fetch(base + lumaPaths.resolveSlug(slug), { signal: AbortSignal.timeout(10000) });
-      if (res.status === 404) break;
-      if (!res.ok) continue;
-      const event = parseEventLookup(await res.json());
-      if (event) return Response.json({ event });
-      break;
-    } catch {
-      // try the next host
-    }
-  }
-  return Response.json({ error: "Couldn't find that event on Luma." }, { status: 404 });
+  const event = parseEventLookup(await lumaJson(lumaPaths.resolveSlug(slug)));
+  if (!event) return fail(404, "Couldn't find that event on Luma.");
+  return Response.json({ event });
 }

@@ -1,4 +1,5 @@
-import { fail, profileFromClaude } from "../../src/server/profileFromClaude";
+import { fail } from "../../src/server/claude";
+import { profileFromClaude } from "../../src/server/profileFromClaude";
 
 // POST multipart form with field "file" (a PDF) -> { goal, background, tip }.
 // The PDF goes to Claude and is then dropped; nothing is written to disk.

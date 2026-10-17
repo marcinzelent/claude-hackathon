@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import type { Guest, Match, Profile } from "./types";
+import type { EventPick, Guest, LumaEvent, Match, Profile } from "./types";
 
 // On web the API route is same-origin. On a phone (Expo Go) it lives on the
 // dev server that served the app, unless EXPO_PUBLIC_API_URL says otherwise.
@@ -49,4 +49,26 @@ export async function importLinkedin(url: string): Promise<ImportedProfile> {
   const data = (await res.json().catch(() => ({}))) as Partial<ImportedProfile> & { error?: string };
   if (!res.ok || !data.goal) throw new Error(data.error ?? `Import failed (HTTP ${res.status}).`);
   return { goal: data.goal, background: data.background ?? "", tip: data.tip ?? null };
+}
+
+/** Public details of one Luma event, looked up by its link. */
+export async function lookupEvent(link: string): Promise<LumaEvent> {
+  const res = await fetch(`${apiBase()}/api/luma-event?link=${encodeURIComponent(link)}`);
+  const data = (await res.json().catch(() => ({}))) as { event?: LumaEvent; error?: string };
+  if (!res.ok || !data.event) throw new Error(data.error ?? `Lookup failed (HTTP ${res.status}).`);
+  return data.event;
+}
+
+export type Discovery = { city: string; events: LumaEvent[]; picks: EventPick[] };
+
+/** Public events in the user's city, with Claude's picks for their goal. */
+export async function discoverEvents(profile: Profile): Promise<Discovery> {
+  const res = await fetch(`${apiBase()}/api/discover`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profile }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Partial<Discovery> & { error?: string };
+  if (!res.ok || !data.picks || !data.events) throw new Error(data.error ?? `Event suggestions failed (HTTP ${res.status}).`);
+  return { city: data.city ?? "", events: data.events, picks: data.picks };
 }

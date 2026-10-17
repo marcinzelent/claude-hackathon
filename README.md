@@ -9,8 +9,9 @@
 
 ## What it does
 1. You paste your own LinkedIn link (fetched once through Apify) or upload your CV / LinkedIn PDF, and Claude fills in the job you should look for and your background. You can also type them.
-2. You load the guests:
-   - **From Luma (mobile app):** sign in to Luma once inside the app, then paste an event link you're registered for.
+2. You pick an event:
+   - **Picked for you:** Claude reads the upcoming public Luma events in your city and suggests the ones that help with your job search, each with a short reason.
+   - **Your Luma events (mobile app):** sign in to Luma once inside the app to see the events you're going to, or add any event by its link.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
 3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener) and *learn from them*, plus the person's public links.
@@ -19,6 +20,7 @@
 ## How Claude is used
 - **Model:** `claude-opus-5-5` through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Server-side refusal fallbacks are switched on (`fallbacks: "default"`).
 - **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
+- **Event suggestions** (`app/api/discover+api.ts`, prompt in `prompts/events.ts`): Claude reads the names and hosts of your city's public Luma events and picks up to 8 that fit your goal.
 - **CV import** (`app/api/profile+api.ts`, prompt in `prompts/cvImport.ts`): Claude reads the uploaded PDF and suggests your target role and a short background, leaving out contact details. The PDF isn't stored.
 - **What Claude produces:** a score, a one-line reason, a conversation opener and a learning tip for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
 - **Where:** the call runs in a server route (`app/api/rank+api.ts`), so the API key never reaches the phone. The prompt lives in `prompts/rank.ts`.
@@ -50,12 +52,15 @@ Paste mode always works as a fallback.
 ## Project layout
 | Path | What it is |
 |---|---|
-| `app/index.tsx` | Home screen: your goal, event link, sample and paste options |
+| `app/onboarding.tsx` | First run: import your LinkedIn or CV, your goal, background and city |
+| `app/events.tsx` | Picked-for-you events, your Luma events, add by link, sample and paste options |
 | `app/results.tsx` | Ranked guest cards and JSONL export |
 | `app/login.tsx` | Luma sign-in inside the app |
 | `app/api/rank+api.ts` | Server route that calls Claude to rank guests |
 | `app/api/profile+api.ts` | Server route where Claude reads your CV PDF |
 | `app/api/linkedin+api.ts`, `src/server/apify.ts` | Server route that fetches your own LinkedIn profile via Apify for Claude |
+| `app/api/discover+api.ts`, `app/api/luma-event+api.ts`, `src/server/luma.ts` | Server routes for public Luma events: suggestions for your city, and lookup by link |
+| `src/api.ts` | The app's calls to those server routes |
 | `prompts/` | The Claude prompts (tweak them here) |
 | `src/luma/` | Luma bridge (hidden WebView), endpoint config and response parsing |
 | `data/sample-guests.json` | Fake guests for the demo |

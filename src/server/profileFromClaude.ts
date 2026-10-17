@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { CV_IMPORT_SYSTEM_PROMPT } from "../../prompts/cvImport";
+import { MISSING_KEY, claudeClient, claudeFailure, fail } from "./claude";
 
 // Server-only: shared by /api/profile (CV PDF) and /api/linkedin (LinkedIn profile data).
 
@@ -11,17 +12,13 @@ const ProfileSchema = z.object({
   tip: z.string().nullable(),
 });
 
-let client: Anthropic | null = null;
-
-export const fail = (status: number, error: string) => Response.json({ error }, { status });
-
 /** Asks Claude to turn a CV or profile into { goal, background, tip }, as an HTTP response. */
 export async function profileFromClaude(
   content: Anthropic.Beta.BetaContentBlockParam[],
   sourceName: string,
 ): Promise<Response> {
-  if (!process.env.ANTHROPIC_API_KEY) return fail(500, "Add ANTHROPIC_API_KEY to .env and restart the server.");
-  client ??= new Anthropic();
+  const client = claudeClient();
+  if (!client) return fail(500, MISSING_KEY);
 
   try {
     const response = await client.beta.messages.parse({
@@ -38,10 +35,7 @@ export async function profileFromClaude(
     }
     return Response.json(response.parsed_output);
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) return fail(500, "The server's ANTHROPIC_API_KEY is invalid.");
-    if (error instanceof Anthropic.RateLimitError) return fail(429, "Claude is busy right now. Try again in a minute.");
     if (error instanceof Anthropic.BadRequestError) return fail(400, `Claude couldn't read that ${sourceName}.`);
-    console.error("profile import failed", error);
-    return fail(500, "Import failed. Try again.");
+    return claudeFailure(error, "Import failed. Try again.");
   }
 }

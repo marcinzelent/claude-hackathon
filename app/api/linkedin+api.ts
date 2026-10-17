@@ -1,5 +1,6 @@
 import { ApifyError, fetchLinkedinProfile } from "../../src/server/apify";
-import { fail, profileFromClaude } from "../../src/server/profileFromClaude";
+import { fail } from "../../src/server/claude";
+import { profileFromClaude } from "../../src/server/profileFromClaude";
 import { parseLinkedinProfileUrl } from "../../src/linkedinUrl";
 
 // POST { url: "https://www.linkedin.com/in/..." } -> { goal, background, tip }.
