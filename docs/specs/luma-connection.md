@@ -120,7 +120,7 @@ On first launch, the user connects their own Luma account inside the Expo app by
 
 ## Further Notes
 
-- Decision 2026-10-17: the import is a background step. The import button and the Guest list screen are test and demo screens; in the real flow the guest list goes to the next feature (LinkedIn research, ranking), whose screen comes next. Handoff and JSON contract: `docs/luma-connection-handoff.md`.
+- Decision 2026-10-17: the import is a background step. The import button and the Guest list screen are test and demo screens; on `main` the guest list goes from the event's "Find who to meet" button straight to the People screen, where Claude ranks it. Handoff and JSON contract: `docs/luma-connection-handoff.md`.
 
 - Luma's endpoints are undocumented and may change without notice. When loading breaks: open an event on luma.com in a signed-in browser, watch the network requests for the guest list, and update the endpoint config. The client tests will show which behavior broke.
 - Using a user's own session to read guest lists they can already see is the design choice that keeps this within what the user is allowed to see. Still, scraping Luma's internal API is not an official integration, which the README should mention.
