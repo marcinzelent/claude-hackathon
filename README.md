@@ -47,6 +47,13 @@ npx expo start          # press w for web, or scan the QR code with Expo Go on y
 
 Paste mode always works as a fallback.
 
+## Team demo event (real, consenting teammates)
+For the demo, the team's own teammates act as event guests, as if imported from Luma. Each one agreed to have their LinkedIn profile used. Their profiles are fetched once through Apify, and Claude uses the full LinkedIn details when ranking them:
+```bash
+npm run enrich -- https://www.linkedin.com/in/teammate-1 https://www.linkedin.com/in/teammate-2
+```
+This writes `data/team-event.json`. That file is **git-ignored and must never be committed**, because it holds real people's data. A **"Team demo event"** button then appears on the events screen. The raw LinkedIn data stays on the server, and only Claude sees it. LinkedIn's terms prohibit scraping, so this only runs on teammates who agreed, never on profiles a user types in.
+
 ## Project layout
 | Path | What it is |
 |---|---|

@@ -50,3 +50,14 @@ export async function importLinkedin(url: string): Promise<ImportedProfile> {
   if (!res.ok || !data.goal) throw new Error(data.error ?? `Import failed (HTTP ${res.status}).`);
   return { goal: data.goal, background: data.background ?? "", tip: data.tip ?? null };
 }
+
+/** The team's demo event from `npm run enrich`, or null if it hasn't been built on this server. */
+export async function fetchTeamEvent(): Promise<{ name: string; guests: Guest[] } | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/team-event`);
+    if (!res.ok) return null;
+    return (await res.json()) as { name: string; guests: Guest[] };
+  } catch {
+    return null;
+  }
+}

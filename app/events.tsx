@@ -1,7 +1,8 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
+import { fetchTeamEvent } from "../src/api";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { discoverEvents, loadLinkedEvents, lookupEvent, saveLinkedEvents, type Discovery } from "../src/luma/events";
 import { mergeEvents, parsePastedGuests } from "../src/luma/normalize";
@@ -28,6 +29,12 @@ export default function Events() {
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
   const [discoverError, setDiscoverError] = useState<string | null>(null);
   const discoverKey = useRef("");
+  const [teamEvent, setTeamEvent] = useState<{ name: string; guests: Guest[] } | null>(null);
+
+  // The team's demo event (teammates' LinkedIn profiles, built with `npm run enrich`), if this server has one.
+  useEffect(() => {
+    fetchTeamEvent().then(setTeamEvent);
+  }, []);
 
   // Ask Claude for public events in the user's city, but only when the profile actually changed.
   const loadDiscovery = useCallback(async (force = false) => {
@@ -212,6 +219,12 @@ export default function Events() {
       <Button title="Add event" variant="secondary" onPress={addByLink} loading={adding} disabled={!link.trim()} />
 
       <Label>Just trying it out?</Label>
+      {teamEvent && (
+        <Button
+          title={`${teamEvent.name} (${teamEvent.guests.length} teammates)`}
+          onPress={() => go(teamEvent.name, teamEvent.guests)}
+        />
+      )}
       <Button
         title="Try with a sample event"
         variant="secondary"
