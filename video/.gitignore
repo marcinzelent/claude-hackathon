@@ -1,0 +1,5 @@
+node_modules/
+out/
+# Screen recordings of the app (made by `npm run record` on your laptop)
+public/clips/*
+!public/clips/.gitkeep

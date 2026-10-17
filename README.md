@@ -96,6 +96,7 @@ Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus found
 - [react-native-webview](https://github.com/react-native-webview/react-native-webview)
 - [expo-document-picker](https://docs.expo.dev/versions/latest/sdk/document-picker/)
 - [Apify](https://apify.com) actor [harvestapi/linkedin-profile-scraper](https://apify.com/harvestapi/linkedin-profile-scraper) (your own profile only)
+- [Remotion](https://www.remotion.dev) and [Playwright](https://playwright.dev) for the demo video (`video/`)
 - [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
 - [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
 - [Luma](https://luma.com) (event data, through the user's own signed-in session)
