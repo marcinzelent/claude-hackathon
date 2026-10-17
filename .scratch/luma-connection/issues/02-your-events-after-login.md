@@ -4,11 +4,13 @@
 
 **Blocked by:** 01 (Connect Luma at startup)
 
-**Status:** ready-for-agent
+**Status:** done (branch ticket/02-your-events)
 
-- [ ] Home lists upcoming events with a visible guest list, soonest first, with name and date
-- [ ] Tapping an event loads all guest-list pages with progress ("Loaded N guests…") and opens the ranking
-- [ ] Empty state offers paste-a-link and the sample event
-- [ ] Errors (hidden list, not signed in, unreachable) show the client's plain-language messages
-- [ ] Pasting a public or ticket link still works
-- [ ] Typecheck and tests pass
+- [x] Home lists upcoming events with a visible guest list, soonest first, with name and date
+- [x] Tapping an event loads all guest-list pages with progress ("Loaded N guests…") and opens the ranking
+- [x] Empty state offers paste-a-link and the sample event
+- [x] Errors (hidden list, not signed in, unreachable) show the client's plain-language messages
+- [ ] Pasting a public or ticket link still works (code path untouched; needs on-phone check)
+- [x] Typecheck and tests pass
+
+_Note: list, tap, empty state and errors verified by typecheck and review only; on-phone check pending._

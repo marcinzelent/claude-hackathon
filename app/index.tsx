@@ -1,9 +1,10 @@
 import { Redirect, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,10 +12,11 @@ import {
   View,
 } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
+import { formatEventDate } from "../src/luma/format";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { parseEventLink, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
-import type { Guest } from "../src/types";
+import type { Guest, LumaEvent } from "../src/types";
 import { Button, Label, colors } from "../src/ui";
 
 export default function Home() {
@@ -28,7 +30,33 @@ export default function Home() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [events, setEvents] = useState<LumaEvent[] | null>(null);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
   const needsGoal = !profile.goal.trim();
+  const connected = luma.status === "connected";
+
+  const showError = (e: unknown) => {
+    setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
+    // Signed out in the meantime: re-check, so home sends the user back to connect.
+    if (e instanceof LumaError && e.kind === "not-signed-in") luma.refresh();
+  };
+
+  // Load the user's upcoming events once Luma is connected. (Hooks stay above the early returns below.)
+  useEffect(() => {
+    if (!connected) return;
+    let cancelled = false;
+    setEventsLoading(true);
+    luma
+      .listMyEvents()
+      .then((list) => !cancelled && setEvents(list))
+      .catch((e) => !cancelled && showError(e))
+      .finally(() => !cancelled && setEventsLoading(false));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected]);
 
   // Connect Luma first, unless the user chose to carry on without it.
   if (luma.status === "checking" && !connectSkipped) {
@@ -63,7 +91,22 @@ export default function Home() {
       const guests = await luma.fetchGuests(eventInput, (n) => setStatus(`Loaded ${n} guests…`));
       go(link.slug, guests);
     } catch (e) {
-      setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
+      showError(e);
+    } finally {
+      setLoading(false);
+      setStatus(null);
+    }
+  };
+
+  const loadEvent = async (event: LumaEvent) => {
+    setError(null);
+    setLoading(true);
+    setStatus("Loading guests…");
+    try {
+      const guests = await luma.fetchGuests(event.slug, (n) => setStatus(`Loaded ${n} guests…`));
+      go(event.name, guests);
+    } catch (e) {
+      showError(e);
     } finally {
       setLoading(false);
       setStatus(null);
@@ -102,9 +145,40 @@ export default function Home() {
           multiline
         />
 
+        {connected && (
+          <View style={styles.events}>
+            <Label>Your upcoming Luma events</Label>
+            {eventsLoading && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={colors.accent} />
+                <Text style={styles.status}>Loading your Luma events…</Text>
+              </View>
+            )}
+            {!eventsLoading && events?.length === 0 && (
+              <Text style={styles.hint}>
+                No upcoming events with a visible guest list. Paste an event link below, or try the sample event.
+              </Text>
+            )}
+            {events?.map((event) => (
+              <Pressable
+                key={event.apiId}
+                accessibilityRole="button"
+                accessibilityLabel={`${event.name}, ${formatEventDate(event.startAt, event.timezone)}`}
+                disabled={needsGoal || loading}
+                onPress={() => loadEvent(event)}
+                style={[styles.eventRow, (needsGoal || loading) && styles.eventDisabled]}
+              >
+                <Text style={styles.eventName}>{event.name}</Text>
+                <Text style={styles.eventDate}>{formatEventDate(event.startAt, event.timezone)}</Text>
+              </Pressable>
+            ))}
+            {loading && status && <Text style={styles.status}>{status}</Text>}
+          </View>
+        )}
+
         {luma.available && (
           <>
-            <Label>Luma event link</Label>
+            <Label>{connected ? "Or paste an event link" : "Luma event link"}</Label>
             <TextInput
               style={styles.input}
               placeholder="luma.com/your-event"
@@ -170,6 +244,21 @@ const styles = StyleSheet.create({
   paste: { minHeight: 140, textAlignVertical: "top" },
   status: { marginTop: 8, color: colors.muted, textAlign: "center" },
   checking: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  events: { marginBottom: 8 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48 },
+  eventRow: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    minHeight: 64,
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  eventDisabled: { opacity: 0.5 },
+  eventName: { fontSize: 17, fontWeight: "600", color: colors.text },
+  eventDate: { fontSize: 14, color: colors.muted, marginTop: 2 },
   hint: { marginTop: 10, color: colors.muted, fontSize: 13, lineHeight: 18 },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
 });
