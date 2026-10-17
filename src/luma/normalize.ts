@@ -1,4 +1,4 @@
-import type { Guest, GuestLinks } from "../types";
+import type { Guest, GuestLinks, LumaEvent } from "../types";
 
 type Json = Record<string, unknown>;
 
@@ -8,13 +8,24 @@ const str = (v: unknown): string | undefined =>
 
 /** Pulls the event slug out of anything the user pastes: a full URL, lu.ma link or bare slug. */
 export function parseEventSlug(input: string): string | null {
+  return parseEventLink(input)?.slug ?? null;
+}
+
+/**
+ * Like parseEventSlug, but also keeps the personal ticket key (`tk`) from a
+ * ticket link, which unlocks the guest list without a Luma sign-in.
+ */
+export function parseEventLink(input: string): { slug: string; ticketKey?: string } | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
-  const withoutQuery = trimmed.split(/[?#]/)[0].replace(/\/+$/, "");
-  const match = withoutQuery.match(/^(?:https?:\/\/)?(?:www\.)?(?:luma\.com|lu\.ma)\/(.+)$/i);
-  const slug = match ? match[1] : withoutQuery;
+  const [beforeHash] = trimmed.split("#");
+  const [path, query = ""] = beforeHash.split("?");
+  const withoutSlash = path.replace(/\/+$/, "");
+  const match = withoutSlash.match(/^(?:https?:\/\/)?(?:www\.)?(?:luma\.com|lu\.ma)\/(.+)$/i);
+  const slug = match ? match[1] : withoutSlash;
   if (!/^[A-Za-z0-9_-]+$/.test(slug)) return null;
-  return slug;
+  const ticketKey = str(new URLSearchParams(query).get("tk"));
+  return ticketKey ? { slug, ticketKey } : { slug };
 }
 
 /** Finds the first "evt-..." id anywhere in a Luma response, whatever its shape. */
@@ -40,6 +51,13 @@ function handleUrl(base: string, handle: string | undefined): string | undefined
   return base + handle.replace(/^@/, "").replace(/^\/+/, "");
 }
 
+// YouTube handles are "@name"; older ones are paths like "channel/UC…".
+function youtubeUrl(handle: string | undefined): string | undefined {
+  if (!handle || /^https?:\/\//i.test(handle)) return handle;
+  const path = handle.replace(/^\/+/, "");
+  return "https://www.youtube.com/" + (path.includes("/") ? path : "@" + path.replace(/^@/, ""));
+}
+
 /** Converts one guest-list entry (user nested under user/guest, or flat) into a Guest. */
 export function normalizeGuest(entry: unknown): Guest | null {
   if (!isObj(entry)) return null;
@@ -59,6 +77,8 @@ export function normalizeGuest(entry: unknown): Guest | null {
       : undefined,
     twitter: handleUrl("https://x.com/", str(u.twitter_handle)),
     instagram: handleUrl("https://instagram.com/", str(u.instagram_handle)),
+    tiktok: handleUrl("https://www.tiktok.com/@", str(u.tiktok_handle)),
+    youtube: youtubeUrl(str(u.youtube_handle)),
     website: str(u.website),
   };
 
@@ -85,6 +105,23 @@ export function parseGuestPage(payload: unknown): { guests: Guest[]; nextCursor?
   const guests = list.map(normalizeGuest).filter((g): g is Guest => g !== null);
   const nextCursor = payload.has_more ? str(payload.next_cursor) : undefined;
   return { guests, nextCursor };
+}
+
+/** Reads one page of "your upcoming events", keeping only events whose guest list you can see. */
+export function parseEventsPage(payload: unknown): { events: (LumaEvent & { endAt?: string })[]; nextCursor?: string } {
+  if (!isObj(payload) || !Array.isArray(payload.entries)) return { events: [] };
+  const events = payload.entries.flatMap((entry) => {
+    const e = isObj(entry) && isObj(entry.event) ? entry.event : null;
+    if (!e || e.show_guest_list !== true) return [];
+    const apiId = str(e.api_id);
+    const name = str(e.name);
+    const slug = str(e.url);
+    const startAt = str(e.start_at);
+    if (!apiId || !name || !slug || !startAt) return [];
+    return [{ apiId, name, slug, startAt, timezone: str(e.timezone), endAt: str(e.end_at) }];
+  });
+  const nextCursor = payload.has_more ? str(payload.next_cursor) : undefined;
+  return { events, nextCursor };
 }
 
 /**

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findEventApiId,
   normalizeGuest,
+  parseEventLink,
   parseEventSlug,
   parseGuestPage,
   parsePastedGuests,
@@ -17,6 +18,17 @@ describe("parseEventSlug", () => {
   it("rejects junk", () => {
     expect(parseEventSlug("")).toBeNull();
     expect(parseEventSlug("https://example.com/a/b")).toBeNull();
+  });
+});
+
+describe("parseEventLink", () => {
+  it("keeps the personal ticket key from a ticket link", () => {
+    expect(parseEventLink("https://luma.com/demo-night?tk=Tk123")).toEqual({ slug: "demo-night", ticketKey: "Tk123" });
+    expect(parseEventLink("lu.ma/demo-night?utm=x&tk=Tk123#top")).toEqual({ slug: "demo-night", ticketKey: "Tk123" });
+  });
+  it("has no ticket key for public links", () => {
+    expect(parseEventLink("luma.com/demo-night")).toEqual({ slug: "demo-night" });
+    expect(parseEventLink("not a link")).toBeNull();
   });
 });
 
@@ -55,6 +67,15 @@ describe("normalizeGuest", () => {
         website: "https://ada.example",
       },
     });
+  });
+  it("turns TikTok and YouTube handles into full links", () => {
+    const g = normalizeGuest({
+      user: { api_id: "u3", name: "Cy", tiktok_handle: "@cy", youtube_handle: "cychannel" },
+    });
+    expect(g?.links).toEqual({ tiktok: "https://www.tiktok.com/@cy", youtube: "https://www.youtube.com/@cychannel" });
+    expect(normalizeGuest({ user: { api_id: "u4", name: "Di", youtube_handle: "channel/UC123" } })?.links.youtube).toBe(
+      "https://www.youtube.com/channel/UC123",
+    );
   });
   it("builds a name from first/last and skips empty entries", () => {
     expect(normalizeGuest({ guest: { api_id: "u2", first_name: "Bo", last_name: "Lee" } })?.name).toBe("Bo Lee");

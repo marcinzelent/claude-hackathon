@@ -2,7 +2,18 @@ export type GuestLinks = {
   linkedin?: string;
   twitter?: string;
   instagram?: string;
+  tiktok?: string;
+  youtube?: string;
   website?: string;
+};
+
+// One of the signed-in user's upcoming Luma events.
+export type LumaEvent = {
+  apiId: string;
+  name: string;
+  slug: string;
+  startAt: string; // ISO date
+  timezone?: string;
 };
 
 export type Guest = {

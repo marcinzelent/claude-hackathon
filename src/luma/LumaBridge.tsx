@@ -1,24 +1,24 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
-import { LUMA_API_BASES, LUMA_WEB_ORIGIN, MAX_GUEST_PAGES, lumaPaths } from "./config";
-import { findEventApiId, parseGuestPage } from "./normalize";
-import type { Guest } from "../types";
+import { createLumaClient, LumaError, type LumaClient, type LumaResponse, type LumaTransport } from "./client";
+import { LUMA_WEB_ORIGIN } from "./config";
+
+export { LumaError } from "./client";
 
 /*
  * The trick that keeps the user's Luma session on their phone:
  * a hidden WebView sits on luma.com and makes the API calls *from inside
  * Luma's own page*, using the cookies set when the user signed in.
  * The app never reads, stores or uploads the session itself.
+ * All Luma knowledge (endpoints, paging, errors) lives in ./client.
  */
 
-type BridgeResponse = { status: number; body: string };
-type Pending = { resolve: (r: BridgeResponse) => void; reject: (e: Error) => void };
+type Pending = { resolve: (r: LumaResponse) => void; reject: (e: Error) => void };
 
-type LumaApi = {
+type LumaApi = LumaClient & {
+  /** True where the user can sign in to Luma (the phone app, not web). */
   available: boolean;
-  isSignedIn: () => Promise<boolean>;
-  fetchGuests: (slug: string, onProgress?: (count: number) => void) => Promise<Guest[]>;
   reload: () => void;
 };
 
@@ -30,7 +30,11 @@ export function useLuma(): LumaApi {
   return ctx;
 }
 
-export class LumaError extends Error {}
+// On web there's no sign-in, but personal ticket links (?tk=) need no cookies.
+const webTransport: LumaTransport = async (url) => {
+  const r = await fetch(url, { credentials: "omit" });
+  return { status: r.status, body: await r.text() };
+};
 
 export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   const webview = useRef<WebView<object>>(null);
@@ -44,7 +48,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
     ready.current = new Promise((resolve) => (markReady.current = resolve));
   }
 
-  const request = useCallback(async (url: string): Promise<BridgeResponse> => {
+  const webviewTransport = useCallback<LumaTransport>(async (url) => {
     await ready.current;
     const id = Math.random().toString(36).slice(2);
     const script = `
@@ -58,73 +62,27 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
         }
       })();
       true;`;
-    return new Promise<BridgeResponse>((resolve, reject) => {
+    return new Promise<LumaResponse>((resolve, reject) => {
       pending.current.set(id, { resolve, reject });
       setTimeout(() => {
-        if (pending.current.delete(id)) reject(new LumaError("Luma did not answer in time."));
+        if (pending.current.delete(id)) reject(new LumaError("unreachable", "Luma did not answer in time."));
       }, 20000);
       webview.current?.injectJavaScript(script);
     });
   }, []);
 
-  // Tries each known API host until one returns 2xx JSON.
-  const getJson = useCallback(
-    async (path: string): Promise<unknown> => {
-      let last = "";
-      for (const base of LUMA_API_BASES) {
-        try {
-          const res = await request(base + path);
-          if (res.status === 401 || res.status === 403) throw new LumaError("Please sign in to Luma first.");
-          if (res.status >= 200 && res.status < 300) return JSON.parse(res.body);
-          last = `HTTP ${res.status}`;
-        } catch (e) {
-          if (e instanceof LumaError) throw e;
-          last = String(e);
-        }
-      }
-      throw new LumaError(`Could not reach Luma (${last}).`);
-    },
-    [request],
-  );
-
-  const api = useMemo<LumaApi>(
-    () => ({
+  const api = useMemo<LumaApi>(() => {
+    const client = createLumaClient(available ? webviewTransport : webTransport);
+    return {
+      ...client,
       available,
+      isSignedIn: async () => (available ? client.isSignedIn() : false),
       reload: () => {
         ready.current = null;
         setWebviewKey((k) => k + 1);
       },
-      isSignedIn: async () => {
-        if (!available) return false;
-        try {
-          await getJson(lumaPaths.self());
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      fetchGuests: async (slug, onProgress) => {
-        if (!available) throw new LumaError("Live Luma loading only works in the mobile app.");
-        const eventId = findEventApiId(await getJson(lumaPaths.resolveSlug(slug)));
-        if (!eventId) throw new LumaError("Could not find that event on Luma.");
-
-        const guests: Guest[] = [];
-        let cursor: string | undefined;
-        for (let page = 0; page < MAX_GUEST_PAGES; page++) {
-          const { guests: batch, nextCursor } = parseGuestPage(await getJson(lumaPaths.guestList(eventId, cursor)));
-          guests.push(...batch);
-          onProgress?.(guests.length);
-          if (!nextCursor) break;
-          cursor = nextCursor;
-        }
-        if (guests.length === 0) {
-          throw new LumaError("No guests visible. The host may have hidden the guest list.");
-        }
-        return guests;
-      },
-    }),
-    [available, getJson],
-  );
+    };
+  }, [available, webviewTransport]);
 
   const onMessage = (event: WebViewMessageEvent) => {
     let msg: { id?: string; status?: number; body?: string; error?: string };

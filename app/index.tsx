@@ -3,7 +3,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
-import { parseEventSlug, parsePastedGuests } from "../src/luma/normalize";
+import { parseEventLink, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
 import type { Guest } from "../src/types";
 import { Button, Label, colors } from "../src/ui";
@@ -28,19 +28,20 @@ export default function Home() {
 
   const loadFromLuma = async () => {
     setError(null);
-    const slug = parseEventSlug(eventInput);
-    if (!slug) return setError("Paste a Luma event link, like luma.com/my-event.");
+    const link = parseEventLink(eventInput);
+    if (!link) return setError("Paste a Luma event link, like luma.com/my-event.");
     setLoading(true);
     setStatus("Checking your Luma sign-in…");
     try {
-      if (!(await luma.isSignedIn())) {
+      // A personal ticket link (?tk=) unlocks the guest list without a sign-in.
+      if (!link.ticketKey && !(await luma.isSignedIn())) {
         setStatus(null);
         router.push("/login");
         return;
       }
       setStatus("Loading guests…");
-      const guests = await luma.fetchGuests(slug, (n) => setStatus(`Loaded ${n} guests…`));
-      go(slug, guests);
+      const guests = await luma.fetchGuests(eventInput, (n) => setStatus(`Loaded ${n} guests…`));
+      go(link.slug, guests);
     } catch (e) {
       setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
     } finally {
