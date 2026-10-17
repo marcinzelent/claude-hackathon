@@ -15,7 +15,7 @@
    - **On the web:** paste the personal ticket link from your Luma confirmation email (`…?tk=…`) on the event page; it unlocks the guest list without a sign-in, through a narrow server relay that sends no cookies.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
-3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener), *learn from them*, and *words to know*: AI terms from that person's profile (like "MLOps" or "RAG") that you tap to get a one-line plain explanation, so you can follow the conversation. You also see the person's public links (LinkedIn, X, Instagram, TikTok, YouTube, website, Luma).
+3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener), *learn from them*, and *words to know*: AI terms from that person's profile (like "MLOps" or "RAG") that you tap to get a one-line plain explanation, so you can follow the conversation. You also see the person's public links.
 4. *Share my plan* sends your top 5 people, why to meet them and what to say, as plain text.
 
 ## How Claude is used
@@ -29,7 +29,7 @@
 
 ## Privacy by design
 - Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
-- LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn. The one exception is the team demo event below: its guests are our own teammates, who agreed, and only there the "Finding LinkedIn profiles" search above runs.
+- LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn. The one exception is the team demo event below: its guests are our own teammates, who agreed.
 - Guest data only lives in memory and is gone when you close the app. To avoid repeat calls to Claude, Luma and LinkedIn, the server keeps recent answers in memory for up to an hour (`src/server/cache.ts`) and forgets them on restart. The only thing saved to disk is the teammates' profiles for the team demo event (`data/team-event.json`, git-ignored). Raw LinkedIn data never leaves the server except to Claude.
 - It only shows guests that you could already see on Luma yourself.
 - The sample event uses **fake guests** (`data/sample-guests.json`). The only real people in the demo are our own teammates, who agreed.
@@ -44,7 +44,7 @@ npx expo start          # press w for web, or scan the QR code with Expo Go on y
 - **Phone:** install **Expo Go** and scan the QR code. Your phone and laptop must be on the same Wi-Fi, because the app calls the ranking route on the laptop's dev server. If that doesn't work, set `EXPO_PUBLIC_API_URL=http://<laptop-ip>:8081` in `.env`.
 - **Checks:** `npm run typecheck` and `npm test`.
 
-**Heads-up about Luma:** Luma has no public guest API for guests, so `src/luma/config.ts` uses the internal endpoints luma.com itself calls (`api.luma.com`, verified on 2026-10-17 in a signed-in browser). They may change without notice. If live loading fails:
+**Heads-up about Luma:** Luma has no public guest API for guests, so `src/luma/config.ts` uses the internal endpoints luma.com itself calls. They weren't verified while building and may change. If live loading fails:
 1. Open the event on luma.com, open DevTools and go to the Network tab.
 2. Click "N Going".
 3. Copy the real request URL into `src/luma/config.ts`.
