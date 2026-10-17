@@ -79,15 +79,13 @@ Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in
 <Drop screenshots here, or link your 2-minute demo video.>
 
 ## Team
-Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus founder or anyone). Link each name to a GitHub or LinkedIn profile.
-
 | Name | Role / background |
 |---|---|
-| [Your name](https://github.com/your-username) | |
-| [Your name](https://github.com/your-username) | |
-| [Your name](https://github.com/your-username) | |
-| [Your name](https://github.com/your-username) | |
-| [Your name](https://github.com/your-username) | |
+| [Aigam Shamali](https://www.linkedin.com/in/aigam-shamali) | Product / Design |
+| [Marcin Zelent](https://www.linkedin.com/in/marcinzelent/) | Founder |
+| [Mate Steinforth](https://www.linkedin.com/in/matesteinforth) | Builder |
+| [Robin Kryszak](https://www.linkedin.com/in/robin-kryszak) | Builder |
+| [Sören Daehn](https://www.linkedin.com/in/soeren-daehn/) | Founder |
 
 ## Credits
 - [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) and Claude
