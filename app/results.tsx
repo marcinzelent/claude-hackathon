@@ -115,26 +115,31 @@ function Avatar({ name, url }: { name: string; url?: string }) {
   );
 }
 
-// AI jargon from the guest's profile: tap a term to see what it means before you talk to them.
+// AI jargon from the guest's profile: tap a term to see what it means in a small popup under it.
 function Terms({ terms }: { terms: NonNullable<Match["terms"]> }) {
   const [open, setOpen] = useState<string | null>(null);
-  const meaning = terms.find((t) => t.term === open)?.meaning;
   return (
-    <>
+    <View style={styles.terms}>
       <Text style={styles.section}>Words to know</Text>
       <View style={styles.chips}>
         {terms.map((t) => (
-          <Pressable
-            key={t.term}
-            onPress={() => setOpen(open === t.term ? null : t.term)}
-            style={[styles.chip, open === t.term && styles.chipOpen]}
-          >
-            <Text style={[styles.chipText, open === t.term && { color: "#fff" }]}>{t.term}</Text>
-          </Pressable>
+          <View key={t.term} style={open === t.term && styles.chipWrapOpen}>
+            <Pressable
+              onPress={() => setOpen(open === t.term ? null : t.term)}
+              style={[styles.chip, open === t.term && styles.chipOpen]}
+            >
+              <Text style={[styles.chipText, open === t.term && { color: "#fff" }]}>{t.term}</Text>
+            </Pressable>
+            {open === t.term && (
+              <Pressable onPress={() => setOpen(null)} style={styles.popup}>
+                <View style={styles.popupArrow} />
+                <Text style={styles.popupText}>{t.meaning}</Text>
+              </Pressable>
+            )}
+          </View>
         ))}
       </View>
-      {meaning && <Text style={styles.body}>{meaning}</Text>}
-    </>
+    </View>
   );
 }
 
@@ -212,4 +217,32 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: colors.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   chipOpen: { backgroundColor: colors.accent },
   chipText: { color: colors.accent, fontWeight: "600", fontSize: 13 },
+  // The open chip and its popup sit above the rest of the card.
+  terms: { zIndex: 1 },
+  chipWrapOpen: { zIndex: 1 },
+  popup: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    marginTop: 8,
+    width: 240,
+    backgroundColor: colors.text,
+    borderRadius: 10,
+    padding: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  popupArrow: {
+    position: "absolute",
+    top: -5,
+    left: 14,
+    width: 10,
+    height: 10,
+    backgroundColor: colors.text,
+    transform: [{ rotate: "45deg" }],
+  },
+  popupText: { color: "#fff", fontSize: 13, lineHeight: 18 },
 });
