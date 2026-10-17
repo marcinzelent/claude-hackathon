@@ -18,7 +18,7 @@ const messages: Record<LumaErrorKind, string> = {
   "invalid-link": "Paste a Luma event link, like luma.com/my-event.",
   "not-signed-in": "Connect your Luma account first, or paste the personal ticket link from your confirmation email.",
   "not-found": "Could not find that event on Luma.",
-  hidden: "No guests visible. The host may have hidden the guest list.",
+  hidden: "No guests visible. The host may have hidden the guest list, or you may not be registered for this event.",
   unreachable: "Could not reach Luma. Check your connection and try again.",
 };
 
@@ -37,7 +37,11 @@ export type LumaClient = {
   fetchGuests: (linkOrSlug: string, onProgress?: (count: number) => void) => Promise<Guest[]>;
 };
 
+// How long the sign-in check's events page may be reused by the next listMyEvents().
+const FIRST_PAGE_TTL_MS = 30_000;
+
 export function createLumaClient(transport: LumaTransport, now: () => Date = () => new Date()): LumaClient {
+  let firstPage: { payload: unknown; at: number } | undefined;
   const getJson = async (path: string): Promise<unknown> => {
     let res: LumaResponse;
     try {
@@ -46,7 +50,8 @@ export function createLumaClient(transport: LumaTransport, now: () => Date = () 
       if (e instanceof LumaError) throw e;
       throw new LumaError("unreachable");
     }
-    if (res.status === 401 || res.status === 403) throw new LumaError("not-signed-in");
+    if (res.status === 401) throw new LumaError("not-signed-in");
+    if (res.status === 403) throw new LumaError("hidden");
     if (res.status === 404) throw new LumaError("not-found");
     if (res.status < 200 || res.status >= 300) throw new LumaError("unreachable");
     try {
@@ -56,10 +61,20 @@ export function createLumaClient(transport: LumaTransport, now: () => Date = () 
     }
   };
 
+  // On the events endpoint a 403 can only mean "not allowed in", i.e. not signed in.
+  const getEventsPage = async (cursor?: string): Promise<unknown> => {
+    try {
+      return await getJson(lumaPaths.myEvents(cursor));
+    } catch (e) {
+      if (e instanceof LumaError && e.kind === "hidden") throw new LumaError("not-signed-in");
+      throw e;
+    }
+  };
+
   return {
     isSignedIn: async () => {
       try {
-        await getJson(lumaPaths.myEvents());
+        firstPage = { payload: await getEventsPage(), at: now().getTime() };
         return true;
       } catch (e) {
         if (e instanceof LumaError && e.kind === "not-signed-in") return false;
@@ -70,8 +85,12 @@ export function createLumaClient(transport: LumaTransport, now: () => Date = () 
     listMyEvents: async () => {
       const events: (LumaEvent & { endAt?: string })[] = [];
       let cursor: string | undefined;
+      // Reuse the first page the sign-in check just fetched, once, if it is still fresh.
+      const cached = firstPage && now().getTime() - firstPage.at <= FIRST_PAGE_TTL_MS ? firstPage.payload : undefined;
+      firstPage = undefined;
       for (let page = 0; page < MAX_EVENT_PAGES; page++) {
-        const { events: batch, nextCursor } = parseEventsPage(await getJson(lumaPaths.myEvents(cursor)));
+        const payload = page === 0 && cached !== undefined ? cached : await getEventsPage(cursor);
+        const { events: batch, nextCursor } = parseEventsPage(payload);
         events.push(...batch);
         if (!nextCursor) break;
         cursor = nextCursor;

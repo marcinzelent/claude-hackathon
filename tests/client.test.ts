@@ -40,6 +40,11 @@ describe("isSignedIn", () => {
     expect(await createLumaClient(transport).isSignedIn()).toBe(false);
   });
 
+  it("treats a 403 on the events endpoint as signed out", async () => {
+    const { transport } = fakeLuma({ [EVENTS]: { status: 403, body: "{}" } });
+    expect(await createLumaClient(transport).isSignedIn()).toBe(false);
+  });
+
   it("reports an unreachable Luma instead of pretending to be signed out", async () => {
     const transport = async () => {
       throw new Error("network down");
@@ -93,6 +98,43 @@ describe("listMyEvents", () => {
     expect((await createLumaClient(transport, now).listMyEvents()).map((e) => e.name)).toEqual(["One", "Two"]);
   });
 
+  it("reuses the page the sign-in check just fetched, once", async () => {
+    const { transport, calls } = fakeLuma({
+      [EVENTS]: ok({ entries: [event("A", "One", "2026-10-18T18:00:00Z")], has_more: false }),
+    });
+    const client = createLumaClient(transport, now);
+
+    expect(await client.isSignedIn()).toBe(true);
+    expect((await client.listMyEvents()).map((e) => e.name)).toEqual(["One"]);
+    expect(calls).toEqual([EVENTS]);
+
+    await client.listMyEvents();
+    expect(calls).toEqual([EVENTS, EVENTS]);
+  });
+
+  it("fetches again when the sign-in check's page is older than 30 seconds", async () => {
+    const { transport, calls } = fakeLuma({ [EVENTS]: ok({ entries: [], has_more: false }) });
+    let t = new Date("2026-10-17T12:00:00Z").getTime();
+    const client = createLumaClient(transport, () => new Date(t));
+
+    await client.isSignedIn();
+    t += 31_000;
+    await client.listMyEvents();
+
+    expect(calls).toEqual([EVENTS, EVENTS]);
+  });
+
+  it("keeps following pagination after reusing the cached first page", async () => {
+    const { transport, calls } = fakeLuma({
+      [EVENTS]: ok({ entries: [event("A", "One", "2026-10-18T18:00:00Z")], has_more: true, next_cursor: "c2" }),
+      [`${EVENTS}&pagination_cursor=c2`]: ok({ entries: [event("B", "Two", "2026-10-19T18:00:00Z")] }),
+    });
+    const client = createLumaClient(transport, now);
+    await client.isSignedIn();
+    expect((await client.listMyEvents()).map((e) => e.name)).toEqual(["One", "Two"]);
+    expect(calls).toEqual([EVENTS, `${EVENTS}&pagination_cursor=c2`]);
+  });
+
   it("asks the user to connect Luma when signed out", async () => {
     const { transport } = fakeLuma({ [EVENTS]: unauthorized });
     await expect(createLumaClient(transport).listMyEvents()).rejects.toMatchObject({ kind: "not-signed-in" });
@@ -142,6 +184,15 @@ describe("fetchGuests", () => {
     await expect(createLumaClient(transport).fetchGuests("demo-night")).rejects.toMatchObject({
       kind: "not-signed-in",
     });
+  });
+
+  it("says the list is hidden when Luma answers 403 (forbidden, not signed out)", async () => {
+    const { transport } = fakeLuma({ [RESOLVE]: resolved, [GUESTS]: { status: 403, body: "{}" } });
+    const error = await createLumaClient(transport)
+      .fetchGuests("demo-night")
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ kind: "hidden" });
+    expect((error as LumaError).message).toMatch(/hidden/);
   });
 
   it("says the host hid the list when Luma returns no guests", async () => {
