@@ -51,7 +51,12 @@ export async function importLinkedin(url: string): Promise<ImportedProfile> {
   return { goal: data.goal, background: data.background ?? "", tip: data.tip ?? null };
 }
 
-export type TeamEvent = { name: string; guests: Guest[]; failed?: { url: string; error: string }[] };
+export type TeamEvent = {
+  name: string;
+  guests: Guest[];
+  enriched?: number; // how many profiles are already cached
+  failed?: { url: string; error: string }[];
+};
 
 /** The team's demo event guest list, or null if this server has none configured. */
 export async function fetchTeamEvent(): Promise<TeamEvent | null> {

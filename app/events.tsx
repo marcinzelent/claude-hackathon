@@ -32,7 +32,7 @@ export default function Events() {
   const [teamEvent, setTeamEvent] = useState<TeamEvent | null>(null);
   const [teamLoading, setTeamLoading] = useState(false);
 
-  // The team's demo event (teammates from TEAM_EVENT_LINKEDIN_URLS in .env), if this server has one.
+  // The team's demo event, if this server has one. Its LinkedIn profiles are fetched when you tap the card.
   useEffect(() => {
     fetchTeamEvent().then(setTeamEvent);
   }, []);
