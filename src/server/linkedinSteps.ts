@@ -16,13 +16,13 @@ const SEARCHES_PER_GUEST = 3;
 
 const VerdictSchema = z.object({ match: z.boolean(), reason: z.string() });
 
-/** linkedin.com/in/ links in Claude's answer, the final text first, then its citations. */
+/** linkedin.com/in/ links in Claude's answer text. Links that only appear in the search results were rejected by Claude. */
 export function linkedinLinksIn(content: unknown[]): string[] {
-  const texts = content.filter(
-    (b): b is { type: "text"; text: string } => (b as { type?: string })?.type === "text",
-  );
-  const ordered = [texts.map((b) => b.text).join("\n"), JSON.stringify(content)].join("\n");
-  return [...new Set(ordered.match(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[^\s"'<>)\],\\]+/gi) ?? [])];
+  const text = content
+    .filter((b): b is { type: "text"; text: string } => (b as { type?: string })?.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+  return [...new Set(text.match(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[^\s"'<>)\],]+/gi) ?? [])];
 }
 
 export function linkedinSteps(client: Anthropic): FinderSteps {

@@ -127,15 +127,14 @@ describe("findLinkedins", () => {
 });
 
 describe("linkedinLinksIn", () => {
-  it("takes profile links from Claude's answer before its citations", () => {
+  it("takes profile links from Claude's answer only, not from the search results it passed over", () => {
     const content = [
-      { type: "web_search_tool_result", content: [{ url: "https://de.linkedin.com/in/from-citation" }] },
+      { type: "web_search_tool_result", content: [{ url: "https://de.linkedin.com/in/other-person" }] },
       { type: "text", text: "https://www.linkedin.com/in/jana-beispiel\nlinkedin.com/in/jana-beispiel-2" },
     ];
     expect(linkedinLinksIn(content)).toEqual([
       "https://www.linkedin.com/in/jana-beispiel",
       "linkedin.com/in/jana-beispiel-2",
-      "https://de.linkedin.com/in/from-citation",
     ]);
   });
 
