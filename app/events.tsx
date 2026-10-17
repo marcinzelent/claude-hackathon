@@ -5,7 +5,7 @@ import sampleGuests from "../data/sample-guests.json";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { discoverEvents, lookupEvent, type Discovery } from "../src/api";
 import { loadLinkedEvents, saveLinkedEvents } from "../src/luma/events";
-import { FEATURED_EVENT } from "../src/luma/featured";
+import { FEATURED_EVENT, FEATURED_PICK } from "../src/luma/featured";
 import { mergeEvents, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
 import type { EventPick, Guest, LumaEvent } from "../src/types";
@@ -199,7 +199,12 @@ export default function Events() {
       )}
       {/* Our event shows up with Claude's picks, not before them. */}
       {discovery && (
-        <EventCard event={featured} loading={openingId === featured.id} onPress={() => openEvent(featured)} />
+        <EventCard
+          event={featured}
+          pick={FEATURED_PICK}
+          loading={openingId === featured.id}
+          onPress={() => openEvent(featured)}
+        />
       )}
       {picks.map(({ pick, event }) => (
         <EventCard
