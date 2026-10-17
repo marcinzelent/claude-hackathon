@@ -5,6 +5,7 @@ import sampleGuests from "../data/sample-guests.json";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { discoverEvents, lookupEvent, type Discovery } from "../src/api";
 import { loadLinkedEvents, saveLinkedEvents } from "../src/luma/events";
+import { FEATURED_EVENT } from "../src/luma/featured";
 import { mergeEvents, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
 import type { EventPick, Guest, LumaEvent } from "../src/types";
@@ -19,6 +20,7 @@ export default function Events() {
   const [lumaState, setLumaState] = useState<LumaState>(luma.available ? "loading" : "unavailable");
   const [myEvents, setMyEvents] = useState<LumaEvent[]>([]);
   const [linked, setLinked] = useState<LumaEvent[]>([]);
+  const [featured, setFeatured] = useState<LumaEvent>(FEATURED_EVENT);
   const [link, setLink] = useState("");
   const [adding, setAdding] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -56,6 +58,10 @@ export default function Events() {
     useCallback(() => {
       let cancelled = false;
       loadLinkedEvents().then((list) => !cancelled && setLinked(list));
+      // Keep the pinned event's details (guest count) fresh; the hardcoded ones stay if Luma doesn't answer.
+      lookupEvent(FEATURED_EVENT.slug)
+        .then((fresh) => !cancelled && setFeatured({ ...FEATURED_EVENT, ...fresh }))
+        .catch(() => {});
       if (luma.available) {
         setLumaState("loading");
         (async () => {
@@ -123,7 +129,9 @@ export default function Events() {
     go("Pasted guest list", guests);
   };
 
-  const events = mergeEvents(myEvents, linked);
+  // Our event is pinned first; the rest follow by date, without repeating it.
+  const others = mergeEvents(myEvents, linked).filter((e) => e.id !== featured.id);
+  const events = [featured, ...others];
   const mine = new Set(events.map((e) => e.id));
   const byId = new Map((discovery?.events ?? []).map((e) => [e.id, e]));
   const picks = (discovery?.picks ?? [])
@@ -158,7 +166,7 @@ export default function Events() {
       {lumaState === "unavailable" && (
         <Text style={styles.hint}>Your own Luma events show up in the phone app. On web, add an event by link.</Text>
       )}
-      {lumaState === "ready" && events.length === 0 && (
+      {lumaState === "ready" && others.length === 0 && (
         <Text style={styles.hint}>No upcoming events on your Luma account. Add one by link below.</Text>
       )}
 
