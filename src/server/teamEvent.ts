@@ -13,7 +13,11 @@ export const TEAM_EVENT_PATH = path.join(process.cwd(), "data", "team-event.json
 
 type LumaEntry = { api_id: string; user: Record<string, unknown> };
 
+/** Bump when the cached shape changes, so old caches are fetched again. */
+const CACHE_VERSION = 2;
+
 export type TeamEventFile = {
+  version?: number;
   event: { name: string };
   /** Luma guest-list shape, so the app reads it like a real Luma import. */
   entries: LumaEntry[];
@@ -58,7 +62,8 @@ function stubEntry(url: string): LumaEntry {
 
 export async function readTeamEvent(): Promise<TeamEventFile | null> {
   try {
-    return JSON.parse(await readFile(TEAM_EVENT_PATH, "utf8")) as TeamEventFile;
+    const file = JSON.parse(await readFile(TEAM_EVENT_PATH, "utf8")) as TeamEventFile;
+    return file.version === CACHE_VERSION ? file : null;
   } catch {
     return null;
   }
@@ -77,7 +82,12 @@ export async function teamEventEntries(urls = teamUrls()): Promise<{ entries: Lu
 export async function enrichTeamEvent(
   urls = teamUrls(),
 ): Promise<{ entries: LumaEntry[]; failed: { url: string; error: string }[] }> {
-  const cache: TeamEventFile = (await readTeamEvent()) ?? { event: { name: TEAM_EVENT_NAME }, entries: [], linkedin: {} };
+  const cache: TeamEventFile = (await readTeamEvent()) ?? {
+    version: CACHE_VERSION,
+    event: { name: TEAM_EVENT_NAME },
+    entries: [],
+    linkedin: {},
+  };
   const missing = urls.filter((url) => !cache.linkedin[guestIdFor(url)]);
   const results = await Promise.allSettled(missing.map((url) => fetchLinkedinProfile(url)));
 
@@ -91,7 +101,10 @@ export async function enrichTeamEvent(
     const id = guestIdFor(url);
     const { name, headline } = nameAndHeadline(result.value, nameFromSlug(slugOf(url)));
     cache.entries = cache.entries.filter((e) => e.api_id !== id);
-    cache.entries.push({ api_id: id, user: { api_id: id, name, bio_short: headline, linkedin_handle: `/in/${slugOf(url)}` } });
+    cache.entries.push({
+      api_id: id,
+      user: { api_id: id, name, bio_short: headline, avatar_url: photoUrl(result.value), linkedin_handle: `/in/${slugOf(url)}` },
+    });
     cache.linkedin[id] = compactLinkedin(result.value);
   });
 
@@ -125,6 +138,32 @@ export function compactLinkedin(item: unknown): string {
     return undefined;
   };
   return JSON.stringify(clean(item, 0) ?? {}).slice(0, MAX_JSON);
+}
+
+const PHOTO_KEY = /photo|picture|avatar|image/i;
+const isHttp = (v: unknown): v is string => typeof v === "string" && /^https:\/\//.test(v);
+
+/** The profile photo URL, whatever the actor calls it: a string, { url }, or a list of sizes. */
+export function photoUrl(item: unknown): string | undefined {
+  if (!item || typeof item !== "object") return undefined;
+  const pick = (v: unknown, depth: number): string | undefined => {
+    if (isHttp(v)) return v;
+    if (depth > 2 || !v || typeof v !== "object") return undefined;
+    if (Array.isArray(v)) {
+      // Lists of sizes: prefer one around 200-400px, else the first that works.
+      const sized = v.find((x) => x && typeof x === "object" && Number((x as { width?: unknown }).width) >= 200);
+      return pick(sized ?? v[0], depth + 1) ?? v.map((x) => pick(x, depth + 1)).find(Boolean);
+    }
+    const o = v as Record<string, unknown>;
+    return pick(o.url, depth + 1) ?? Object.values(o).map((x) => pick(x, depth + 1)).find(Boolean);
+  };
+  for (const [key, value] of Object.entries(item)) {
+    if (PHOTO_KEY.test(key) && !/background|banner|cover/i.test(key)) {
+      const url = pick(value, 0);
+      if (url) return url;
+    }
+  }
+  return undefined;
 }
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);

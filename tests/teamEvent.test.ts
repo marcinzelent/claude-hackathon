@@ -53,3 +53,20 @@ describe("teamUrls", () => {
     delete process.env.TEAM_EVENT_LINKEDIN_URLS;
   });
 });
+
+describe("photoUrl", () => {
+  it("finds the headshot in the shapes actors use", async () => {
+    const { photoUrl } = await import("../src/server/teamEvent");
+    expect(photoUrl({ photo: "https://media.licdn.com/a.jpg" })).toBe("https://media.licdn.com/a.jpg");
+    expect(photoUrl({ profilePicture: { url: "https://x/b.jpg" } })).toBe("https://x/b.jpg");
+    expect(
+      photoUrl({ profilePictureSizes: [{ width: 100, url: "https://x/100.jpg" }, { width: 400, url: "https://x/400.jpg" }] }),
+    ).toBe("https://x/400.jpg");
+  });
+  it("ignores banners and missing photos", async () => {
+    const { photoUrl } = await import("../src/server/teamEvent");
+    expect(photoUrl({ backgroundImage: "https://x/banner.jpg" })).toBeUndefined();
+    expect(photoUrl({ name: "No Photo" })).toBeUndefined();
+    expect(photoUrl(null)).toBeUndefined();
+  });
+});
