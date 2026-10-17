@@ -45,7 +45,8 @@ export function useLuma(): LumaApi {
   return ctx;
 }
 
-// On web there's no sign-in, but personal ticket links (?tk=) need no cookies.
+// On web, Luma's API blocks requests from other sites (CORS, checked 2026-10-17),
+// even ticket links (?tk=), so calls end as "unreachable". Web uses the sample event and paste mode.
 const webTransport: LumaTransport = async (url) => {
   const r = await fetch(url, { credentials: "omit" });
   return { status: r.status, body: await r.text() };

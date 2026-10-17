@@ -35,8 +35,8 @@ export default function Connect() {
         </>
       ) : (
         <Text style={styles.note}>
-          Connecting Luma needs the RoomRadar phone app. On the web you can try the sample event, paste a guest list,
-          or paste your personal ticket link.
+          Connecting Luma needs the RoomRadar phone app. On the web you can try the sample event or paste a guest list
+          copied from Luma.
         </Text>
       )}
 
