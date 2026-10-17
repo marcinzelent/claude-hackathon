@@ -16,6 +16,8 @@ type Store = {
   // The user chose "continue without Luma" on the connect screen (this app session only).
   connectSkipped: boolean;
   setConnectSkipped: (skipped: boolean) => void;
+  // Drops everything that came from the old Luma account (guests, matches, "continue without Luma").
+  forgetLumaAccount: () => void;
 };
 
 const PROFILE_KEY = "roomradar.profile";
@@ -51,9 +53,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setMatches(null);
   };
 
+  const forgetLumaAccount = () => {
+    setGuests("", []);
+    setConnectSkipped(false);
+  };
+
   return (
     <StoreContext.Provider
-      value={{ profile, setProfile, eventName, guests, setGuests, matches, setMatches, connectSkipped, setConnectSkipped }}
+      value={{
+        profile,
+        setProfile,
+        eventName,
+        guests,
+        setGuests,
+        matches,
+        setMatches,
+        connectSkipped,
+        setConnectSkipped,
+        forgetLumaAccount,
+      }}
     >
       {children}
     </StoreContext.Provider>

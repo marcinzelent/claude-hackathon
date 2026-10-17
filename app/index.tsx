@@ -22,7 +22,7 @@ import { Button, Label, colors } from "../src/ui";
 export default function Home() {
   const router = useRouter();
   const luma = useLuma();
-  const { profile, setProfile, setGuests, setMatches, connectSkipped, setConnectSkipped } = useStore();
+  const { profile, setProfile, setGuests, connectSkipped, setConnectSkipped, forgetLumaAccount } = useStore();
   const [eventInput, setEventInput] = useState("");
   const [pasteOpen, setPasteOpen] = useState(!luma.available);
   const [pasted, setPasted] = useState("");
@@ -58,6 +58,13 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected]);
+
+  // Once Luma is connected, "continue without Luma" no longer applies. Otherwise a later
+  // expired session wouldn't send the user back to /connect. (Declared above the early returns.)
+  useEffect(() => {
+    if (connected) setConnectSkipped(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected]);
 
@@ -125,9 +132,7 @@ export default function Home() {
     if (result === "connected" || result === "offline") return setDisconnectFailed(true);
     // Signed out: forget everything from the old account; home then redirects to /connect.
     setEvents(null);
-    setGuests("", []);
-    setMatches(null);
-    setConnectSkipped(false);
+    forgetLumaAccount();
   };
 
   const usePasted = () => {
