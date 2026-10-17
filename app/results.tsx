@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { toGuestJson } from "../src/luma/normalize";
 import { rankGuests } from "../src/rank/client";
 import { useStore } from "../src/store";
@@ -8,10 +8,31 @@ import { Button, colors, scoreColor } from "../src/ui";
 
 const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", website: "Website" } as const;
 
+// Phone: the share sheet. Web: copy to the clipboard, or download a file if copying isn't allowed.
+async function exportText(json: string): Promise<string | null> {
+  if (Platform.OS !== "web") {
+    await Share.share({ message: json });
+    return null;
+  }
+  try {
+    await navigator.clipboard.writeText(json);
+    return "Copied JSON to clipboard";
+  } catch {
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "guests.json";
+    link.click();
+    URL.revokeObjectURL(url);
+    return "Downloaded guests.json";
+  }
+}
+
 export default function Results() {
   const { profile, eventName, guests, matches, setMatches } = useStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -37,7 +58,14 @@ export default function Results() {
       .sort((a, b) => (b.match?.score ?? -1) - (a.match?.score ?? -1));
   }, [guests, matches]);
 
-  const exportJson = () => Share.share({ message: toGuestJson(ranked) });
+  const exportJson = async () => {
+    setExportNote(null);
+    try {
+      setExportNote(await exportText(toGuestJson(ranked)));
+    } catch {
+      setExportNote("Couldn't export the guest list. Please try again.");
+    }
+  };
 
   if (guests.length === 0) {
     return <Text style={styles.center}>No guests loaded yet. Go back and pick an event.</Text>;
@@ -67,6 +95,7 @@ export default function Results() {
             </>
           )}
           <Button title="Export as JSON" variant="secondary" onPress={exportJson} />
+          {exportNote && <Text style={styles.meta}>{exportNote}</Text>}
         </View>
       }
       renderItem={({ item }) => <GuestCard guest={item} />}
