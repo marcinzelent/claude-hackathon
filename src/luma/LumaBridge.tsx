@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { createLumaClient, LumaError, type LumaClient, type LumaResponse, type LumaTransport } from "./client";
-import { LUMA_WEB_ORIGIN } from "./config";
+import { LUMA_API_BASE, LUMA_SIGNOUT_API_PATH, LUMA_SIGNOUT_URL, LUMA_WEB_ORIGIN } from "./config";
+import { nextLumaState, type LumaState } from "./session";
 
 export { LumaError } from "./client";
 
@@ -30,6 +31,10 @@ type LumaApi = LumaClient & {
   status: LumaStatus;
   /** Reloads the hidden WebView (to pick up a fresh sign-in) and asks Luma again. */
   refresh: () => Promise<LumaStatus>;
+  /** True when the Luma session ended on its own (not through "Disconnect"). Shown on the connect screen. */
+  sessionExpired: boolean;
+  /** Signs out of Luma inside the app's WebView, then asks Luma again. Resolves to the new status. */
+  disconnect: () => Promise<LumaStatus>;
 };
 
 const LumaContext = createContext<LumaApi | null>(null);
@@ -53,7 +58,13 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   const markReady = useRef<() => void>(() => {});
   const [webviewKey, setWebviewKey] = useState(0);
   const available = Platform.OS !== "web";
-  const [status, setStatus] = useState<LumaStatus>(available ? "checking" : "unavailable");
+  const [checking, setChecking] = useState(available);
+  const [state, setState] = useState<LumaState>({
+    status: available ? "checking" : "unavailable",
+    sessionExpired: false,
+  });
+  const stateRef = useRef(state);
+  const status: LumaStatus = checking ? "checking" : state.status;
 
   const resetReady = () => {
     ready.current = new Promise((resolve) => (markReady.current = resolve));
@@ -88,18 +99,24 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
     [available, webviewTransport],
   );
 
-  const check = useCallback(async (): Promise<LumaStatus> => {
-    if (!available) return "unavailable";
-    setStatus("checking");
-    let next: LumaStatus;
-    try {
-      next = (await client.isSignedIn()) ? "connected" : "signed-out";
-    } catch {
-      next = "offline";
-    }
-    setStatus(next);
-    return next;
-  }, [available, client]);
+  const check = useCallback(
+    async (reason: "check" | "disconnect" = "check"): Promise<LumaStatus> => {
+      if (!available) return "unavailable";
+      setChecking(true);
+      let result: "connected" | "signed-out" | "offline";
+      try {
+        result = (await client.isSignedIn()) ? "connected" : "signed-out";
+      } catch {
+        result = "offline";
+      }
+      const next = nextLumaState(stateRef.current, result, reason);
+      stateRef.current = next;
+      setState(next);
+      setChecking(false);
+      return next.status;
+    },
+    [available, client],
+  );
 
   // Ask Luma once on startup.
   useEffect(() => {
@@ -112,14 +129,31 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
       available,
       status,
       isSignedIn: async () => (available ? client.isSignedIn() : false),
+      sessionExpired: state.sessionExpired,
       refresh: () => {
         if (!available) return check();
         resetReady();
         setWebviewKey((k) => k + 1);
         return check();
       },
+      disconnect: async () => {
+        if (!available) return "unavailable";
+        await ready.current;
+        // Unverified sign-out routes (see config.ts): try the API call, then the sign-out page.
+        // Failures are ignored; the check below decides whether it worked.
+        webview.current?.injectJavaScript(`
+          (async () => {
+            try { await fetch(${JSON.stringify(LUMA_API_BASE + LUMA_SIGNOUT_API_PATH)}, { method: "POST", credentials: "include" }); } catch (e) {}
+            window.location.href = ${JSON.stringify(LUMA_SIGNOUT_URL)};
+          })();
+          true;`);
+        await new Promise((r) => setTimeout(r, 3000));
+        resetReady();
+        setWebviewKey((k) => k + 1);
+        return check("disconnect");
+      },
     }),
-    [available, client, status, check],
+    [available, client, status, state.sessionExpired, check],
   );
 
   const onMessage = (event: WebViewMessageEvent) => {

@@ -22,7 +22,7 @@ import { Button, Label, colors } from "../src/ui";
 export default function Home() {
   const router = useRouter();
   const luma = useLuma();
-  const { profile, setProfile, setGuests, connectSkipped } = useStore();
+  const { profile, setProfile, setGuests, setMatches, connectSkipped, setConnectSkipped } = useStore();
   const [eventInput, setEventInput] = useState("");
   const [pasteOpen, setPasteOpen] = useState(!luma.available);
   const [pasted, setPasted] = useState("");
@@ -32,6 +32,9 @@ export default function Home() {
 
   const [events, setEvents] = useState<LumaEvent[] | null>(null);
   const [eventsLoading, setEventsLoading] = useState(false);
+
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectFailed, setDisconnectFailed] = useState(false);
 
   const needsGoal = !profile.goal.trim();
   const connected = luma.status === "connected";
@@ -111,6 +114,20 @@ export default function Home() {
       setLoading(false);
       setStatus(null);
     }
+  };
+
+  const disconnect = async () => {
+    setError(null);
+    setDisconnectFailed(false);
+    setDisconnecting(true);
+    const result = await luma.disconnect();
+    setDisconnecting(false);
+    if (result === "connected" || result === "offline") return setDisconnectFailed(true);
+    // Signed out: forget everything from the old account; home then redirects to /connect.
+    setEvents(null);
+    setGuests("", []);
+    setMatches(null);
+    setConnectSkipped(false);
   };
 
   const usePasted = () => {
@@ -220,6 +237,20 @@ export default function Home() {
           </View>
         )}
 
+        {connected && (
+          <View style={styles.disconnect}>
+            {disconnectFailed && (
+              <>
+                <Text style={styles.error}>
+                  Couldn't disconnect automatically. Open Luma, use its menu to sign out, then tap Done.
+                </Text>
+                <Button title="Open Luma" variant="secondary" onPress={() => router.push("/login?mode=signout")} />
+              </>
+            )}
+            <Button title="Disconnect Luma" variant="secondary" onPress={disconnect} loading={disconnecting} />
+          </View>
+        )}
+
         {needsGoal && <Text style={styles.hint}>Start by telling us what job you're looking for.</Text>}
         {error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
@@ -259,6 +290,7 @@ const styles = StyleSheet.create({
   eventDisabled: { opacity: 0.5 },
   eventName: { fontSize: 17, fontWeight: "600", color: colors.text },
   eventDate: { fontSize: 14, color: colors.muted, marginTop: 2 },
+  disconnect: { marginTop: 24 },
   hint: { marginTop: 10, color: colors.muted, fontSize: 13, lineHeight: 18 },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
 });

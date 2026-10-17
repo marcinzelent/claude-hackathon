@@ -21,3 +21,10 @@ export const lumaPaths = {
 
 export const MAX_GUEST_PAGES = 20;
 export const MAX_EVENT_PAGES = 5;
+
+// UNVERIFIED sign-out routes, found in Luma's web bundle but never tried on a real session.
+// Needs the phone test: if "Disconnect Luma" doesn't sign you out, check these first.
+export const LUMA_SIGNOUT_API_PATH = "/auth/sign-out"; // probably POST on LUMA_API_BASE
+export const LUMA_SIGNOUT_URL = "https://luma.com/signout";
+// Fallback when automatic sign-out fails: the user signs out by hand from Luma's home page.
+export const LUMA_HOME_URL = "https://luma.com/home";

@@ -25,6 +25,9 @@ export default function Connect() {
 
       {luma.available ? (
         <>
+          {luma.sessionExpired && (
+            <Text style={styles.expired}>Your Luma session expired. Connect again to see your events.</Text>
+          )}
           <Button title="Connect Luma" onPress={() => router.push("/login")} />
           {luma.status === "offline" && (
             <Text style={styles.error}>Could not reach Luma. Check your connection, or try the sample event.</Text>
@@ -47,5 +50,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "700", color: colors.text },
   body: { fontSize: 16, color: colors.muted, marginTop: 8, marginBottom: 8, lineHeight: 22 },
   note: { fontSize: 15, color: colors.text, marginTop: 8, lineHeight: 21 },
+  expired: { fontSize: 15, color: colors.text, marginVertical: 8, lineHeight: 21, fontWeight: "600" },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
 });

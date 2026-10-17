@@ -4,9 +4,9 @@
 
 **Blocked by:** 01 (Connect Luma at startup)
 
-**Status:** ready-for-agent
+**Status:** done (branch ticket/04-disconnect)
 
-- [ ] "Disconnect Luma" clears Luma's cookies in the app and shows the connect screen
-- [ ] After disconnecting, the events list is gone and the sign-in check reports signed out
-- [ ] An expired session leads to the connect screen with an explanation
-- [ ] Typecheck and tests pass
+- [ ] (needs phone test; sign-out endpoints /auth/sign-out and luma.com/signout are UNVERIFIED, manual-signout fallback via /login?mode=signout) "Disconnect Luma" clears Luma's cookies in the app and shows the connect screen
+- [ ] (needs phone test) After disconnecting, the events list is gone and the sign-in check reports signed out
+- [x] An expired session leads to the connect screen with an explanation (state rule unit-tested)
+- [x] Typecheck and tests pass
