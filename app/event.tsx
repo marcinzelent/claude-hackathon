@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { lookupEvent } from "../src/api";
+import { enrichTeamEvent, lookupEvent } from "../src/api";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
+import { FEATURED_EVENT } from "../src/luma/featured";
 import { useStore } from "../src/store";
 import type { LumaEvent } from "../src/types";
 import { Button, Label, colors, scoreColor } from "../src/ui";
@@ -13,7 +14,7 @@ export default function EventDetails() {
   const router = useRouter();
   const luma = useLuma();
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { selected, setGuests } = useStore();
+  const { profile, selected, setGuests } = useStore();
   const known = selected?.event.slug === slug ? selected : null;
   const pick = known?.pick;
   const [event, setEvent] = useState<LumaEvent | null>(known?.event ?? null);
@@ -33,9 +34,29 @@ export default function EventDetails() {
     };
   }, [slug]);
 
+  // Our own event's guests are the teammates: fetch their LinkedIn profiles via Apify (cached), then rank.
+  const findTeam = async () => {
+    if (!event) return;
+    setOpening(true);
+    setStatus("Fetching LinkedIn profiles through Apify, then Claude scores them. The first time takes up to a minute…");
+    try {
+      const team = await enrichTeamEvent();
+      const others = team.guests.filter((g) => !profile.linkedinUrl || g.links.linkedin !== profile.linkedinUrl);
+      if (team.failed?.length) setError(`Couldn't fetch ${team.failed.length} profile(s); ranking the rest.`);
+      setGuests(event.name, others);
+      router.push("/results");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't load the team's profiles.");
+    } finally {
+      setOpening(false);
+      setStatus(null);
+    }
+  };
+
   const findPeople = async () => {
     if (!event) return;
     setError(null);
+    if (event.slug === FEATURED_EVENT.slug) return findTeam();
     if (!luma.available) {
       return setError("Loading a guest list needs the phone app (Expo Go). On web, use the sample event or paste the list.");
     }
