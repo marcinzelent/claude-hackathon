@@ -19,7 +19,8 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ title: "RoomRadar" }} />
           <Stack.Screen name="onboarding" options={{ title: "RoomRadar" }} />
           <Stack.Screen name="events" options={{ title: "Your events" }} />
-          <Stack.Screen name="event" options={{ title: "Event" }} />
+          <Stack.Screen name="event/[slug]/index" options={{ title: "Event" }} />
+          <Stack.Screen name="event/[slug]/people" options={{ title: "Who to meet" }} />
           <Stack.Screen name="login" options={{ title: "Sign in to Luma", presentation: "modal" }} />
           <Stack.Screen name="results" options={{ title: "Who to meet" }} />
         </Stack>

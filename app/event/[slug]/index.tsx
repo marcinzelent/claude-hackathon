@@ -1,12 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { enrichTeamEvent, lookupEvent } from "../src/api";
-import { LumaError, useLuma } from "../src/luma/LumaBridge";
-import { FEATURED_EVENT } from "../src/luma/featured";
-import { useStore } from "../src/store";
-import type { LumaEvent } from "../src/types";
-import { Button, Label, colors, scoreColor } from "../src/ui";
+import { enrichTeamEvent, lookupEvent } from "../../../src/api";
+import { LumaError, useLuma } from "../../../src/luma/LumaBridge";
+import { FEATURED_EVENT } from "../../../src/luma/featured";
+import { useStore } from "../../../src/store";
+import type { LumaEvent } from "../../../src/types";
+import { Button, Label, colors, scoreColor } from "../../../src/ui";
 
 // Details of one event: when, where, who hosts it, Claude's reason, and the full description.
 // Shows what the events list already knew right away, then fills in the rest from Luma.
@@ -44,7 +44,7 @@ export default function EventDetails() {
       const others = team.guests.filter((g) => !profile.linkedinUrl || g.links.linkedin !== profile.linkedinUrl);
       if (team.failed?.length) setError(`Couldn't fetch ${team.failed.length} profile(s); ranking the rest.`);
       setGuests(event.name, others);
-      router.push("/results");
+      router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the team's profiles.");
     } finally {
@@ -65,7 +65,7 @@ export default function EventDetails() {
       if (!(await luma.isSignedIn())) return router.push("/login");
       const guests = await luma.fetchGuests(event.id, (n) => setStatus(`Loaded ${n} guests…`));
       setGuests(event.name, guests);
-      router.push("/results");
+      router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
     } catch (e) {
       setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
     } finally {

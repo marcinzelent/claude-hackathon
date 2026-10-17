@@ -89,7 +89,7 @@ export default function Events() {
   // Tapping an event opens its details page; guests are loaded from there.
   const openEvent = (event: LumaEvent, pick?: EventPick) => {
     setSelected({ event, pick });
-    router.push({ pathname: "/event", params: { slug: event.slug } });
+    router.push({ pathname: "/event/[slug]", params: { slug: event.slug } });
   };
 
   const addByLink = async () => {
