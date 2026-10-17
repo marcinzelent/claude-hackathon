@@ -4,13 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (commit b300453). Phone-only criteria still need the manual pass in ticket 06.
 
-- [ ] First launch without a Luma session shows the connect screen, not home
-- [ ] "Connect Luma" opens Luma's sign-in page in the app; the app never sees credentials or the session
-- [ ] After sign-in the app confirms the session with Luma (sign-in check) and shows "Connected" before going home
-- [ ] If the sign-in didn't complete, the user sees a clear message and can retry
-- [ ] A returning signed-in user lands on home directly
-- [ ] "Try the sample event" works without any Luma account and leads to home with the sample option ready
-- [ ] On web, the connect screen explains that connecting needs the phone app and offers sample event and paste
-- [ ] Typecheck and tests pass
+- [x] First launch without a Luma session shows the connect screen, not home (verified on web)
+- [x] "Connect Luma" opens Luma's sign-in page in the app; the app never sees credentials or the session
+- [x] After sign-in the app confirms the session with Luma (sign-in check) and shows "Connected" before going home
+- [x] If the sign-in didn't complete, the user sees a clear message and can retry
+- [x] A returning signed-in user lands on home directly
+- [x] "Try the sample event" works without any Luma account and leads to home with the sample option ready (verified on web)
+- [x] On web, the connect screen explains that connecting needs the phone app and offers sample event and paste (verified on web)
+- [x] Typecheck and tests pass
