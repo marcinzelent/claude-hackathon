@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
-import { toJsonl } from "../src/luma/normalize";
+import { toGuestJson } from "../src/luma/normalize";
 import { rankGuests } from "../src/rank/client";
 import { useStore } from "../src/store";
 import type { RankedGuest } from "../src/types";
 import { Button, colors, scoreColor } from "../src/ui";
 
-const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", website: "Website" } as const;
+const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", website: "Website" } as const;
 
 export default function Results() {
   const { profile, eventName, guests, matches, setMatches } = useStore();
@@ -37,7 +37,7 @@ export default function Results() {
       .sort((a, b) => (b.match?.score ?? -1) - (a.match?.score ?? -1));
   }, [guests, matches]);
 
-  const exportJsonl = () => Share.share({ message: toJsonl(ranked) });
+  const exportJson = () => Share.share({ message: toGuestJson(ranked) });
 
   if (guests.length === 0) {
     return <Text style={styles.center}>No guests loaded yet. Go back and pick an event.</Text>;
@@ -66,7 +66,7 @@ export default function Results() {
               <Button title="Try again" onPress={run} />
             </>
           )}
-          {matches && <Button title="Export as JSONL" variant="secondary" onPress={exportJsonl} />}
+          <Button title="Export as JSON" variant="secondary" onPress={exportJson} />
         </View>
       }
       renderItem={({ item }) => <GuestCard guest={item} />}

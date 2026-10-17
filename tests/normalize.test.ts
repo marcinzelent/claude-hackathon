@@ -6,6 +6,7 @@ import {
   parseEventSlug,
   parseGuestPage,
   parsePastedGuests,
+  toGuestJson,
   toJsonl,
 } from "../src/luma/normalize";
 
@@ -101,5 +102,38 @@ describe("parsePastedGuests", () => {
     const jsonl = toJsonl([{ user: { api_id: "u1", name: "A" } }, { user: { api_id: "u2", name: "B" } }]);
     expect(parsePastedGuests(jsonl)).toHaveLength(2);
     expect(parsePastedGuests(JSON.stringify({ entries: [{ user: { api_id: "u1", name: "A" } }] }))).toHaveLength(1);
+  });
+});
+
+describe("toGuestJson", () => {
+  const ranked = {
+    id: "g1",
+    name: "Ada Example",
+    username: "ada",
+    bio: "Builds compilers",
+    lumaUrl: "https://luma.com/u/ada",
+    links: { linkedin: "https://linkedin.com/in/ada", tiktok: "https://tiktok.com/@ada", youtube: "https://youtube.com/@ada" },
+    match: { id: "g1", score: 91, why: "Same field", opener: "Hi Ada", learn: "Compilers" },
+  };
+  const plain = { id: "g2", name: "Bob Sample", links: {} };
+
+  it("is a pretty-printed array in input order, including guests without links", () => {
+    const out = toGuestJson([plain, ranked]);
+    expect(out).toContain("\n  {");
+    const parsed = JSON.parse(out);
+    expect(parsed.map((g: { id: string }) => g.id)).toEqual(["g2", "g1"]);
+    expect(parsed[0]).toEqual({ id: "g2", name: "Bob Sample", links: {} });
+  });
+  it("includes match data and all present links when ranked", () => {
+    const [g] = JSON.parse(toGuestJson([ranked]));
+    expect(g.links).toEqual(ranked.links);
+    expect(g.match).toEqual({ score: 91, why: "Same field", opener: "Hi Ada", learn: "Compilers" });
+    expect(g.lumaUrl).toBe("https://luma.com/u/ada");
+  });
+  it("omits undefined fields and has no match key for unranked guests", () => {
+    const [g] = JSON.parse(toGuestJson([{ ...plain, bio: undefined, match: undefined, links: { website: undefined } }]));
+    expect(Object.keys(g).sort()).toEqual(["id", "links", "name"]);
+    expect(g.links).toEqual({});
+    expect(toGuestJson([plain])).not.toContain("match");
   });
 });

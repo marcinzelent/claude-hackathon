@@ -1,4 +1,4 @@
-import type { Guest, GuestLinks, LumaEvent } from "../types";
+import type { Guest, GuestLinks, LumaEvent, RankedGuest } from "../types";
 
 type Json = Record<string, unknown>;
 
@@ -155,3 +155,19 @@ export function parsePastedGuests(text: string): Guest[] {
 }
 
 export const toJsonl = (rows: unknown[]) => rows.map((r) => JSON.stringify(r)).join("\n");
+
+// Pretty-printed JSON array of guests for pasting into other tools. Undefined
+// fields are dropped; `match` only appears for ranked guests.
+export function toGuestJson(rows: RankedGuest[]): string {
+  const out = rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    username: r.username,
+    bio: r.bio,
+    avatarUrl: r.avatarUrl,
+    lumaUrl: r.lumaUrl,
+    links: Object.fromEntries(Object.entries(r.links).filter(([, v]) => v !== undefined)),
+    match: r.match && { score: r.match.score, why: r.match.why, opener: r.match.opener, learn: r.match.learn },
+  }));
+  return JSON.stringify(out, null, 2);
+}
