@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import { apiBase } from "../api";
 import { TtlCache } from "../cache";
 import { LUMA_API_BASES, LUMA_WEB_ORIGIN, MAX_GUEST_PAGES, lumaPaths } from "./config";
 import { findEventApiId, mergeEvents, parseEventPage, parseGuestPage } from "./normalize";
@@ -11,6 +12,10 @@ import type { Guest, LumaEvent } from "../types";
  * a hidden WebView sits on luma.com and makes the API calls *from inside
  * Luma's own page*, using the cookies set when the user signed in.
  * The app never reads, stores or uploads the session itself.
+ *
+ * On the web there is no WebView and browsers block Luma's API (CORS), so guest
+ * lists go through our server relay (/api/luma) with the personal ticket key from
+ * the user's ticket link instead of a sign-in. The relay sends no cookies.
  */
 
 type BridgeResponse = { status: number; body: string };
@@ -24,8 +29,8 @@ export type LumaApi = {
   available: boolean;
   isSignedIn: () => Promise<boolean>;
   fetchMyEvents: () => Promise<LumaEvent[]>;
-  /** Accepts an event slug or an "evt-..." id. */
-  fetchGuests: (slugOrId: string, onProgress?: (count: number) => void) => Promise<Guest[]>;
+  /** Accepts an event slug or an "evt-..." id. On the web a ticket key (from a ?tk= ticket link) is required. */
+  fetchGuests: (slugOrId: string, onProgress?: (count: number) => void, ticketKey?: string) => Promise<Guest[]>;
   reload: () => void;
 };
 
@@ -76,9 +81,15 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Tries each known API host until one returns 2xx JSON.
+  // Tries each known API host until one returns 2xx JSON. On the web, asks our relay instead.
   const fetchJson = useCallback(
     async (path: string): Promise<unknown> => {
+      if (!available) {
+        const res = await fetch(`${apiBase()}/api/luma?path=${encodeURIComponent(path)}`, { credentials: "omit" });
+        if (res.status === 401 || res.status === 403) throw new LumaError("This ticket link didn't unlock the guest list.");
+        if (!res.ok) throw new LumaError(`Could not reach Luma (HTTP ${res.status}).`);
+        return res.json();
+      }
       let last = "";
       for (const base of LUMA_API_BASES) {
         try {
@@ -93,7 +104,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
       }
       throw new LumaError(`Could not reach Luma (${last}).`);
     },
-    [request],
+    [available, request],
   );
   const getJson = useCallback((path: string) => cache.current.get(path, () => fetchJson(path)), [fetchJson]);
 
@@ -123,8 +134,10 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
         const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
         return mergeEvents(upcoming, past.filter((e) => (e.startAt ?? "") >= dayAgo));
       },
-      fetchGuests: async (slugOrId, onProgress) => {
-        if (!available) throw new LumaError("Live Luma loading only works in the mobile app.");
+      fetchGuests: async (slugOrId, onProgress, ticketKey) => {
+        if (!available && !ticketKey) {
+          throw new LumaError("On the web, paste your Luma ticket link to load the guest list.");
+        }
         const eventId = slugOrId.startsWith("evt-")
           ? slugOrId
           : findEventApiId(await getJson(lumaPaths.resolveSlug(slugOrId)));
@@ -133,7 +146,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
         const guests: Guest[] = [];
         let cursor: string | undefined;
         for (let page = 0; page < MAX_GUEST_PAGES; page++) {
-          const { guests: batch, nextCursor } = parseGuestPage(await getJson(lumaPaths.guestList(eventId, cursor)));
+          const { guests: batch, nextCursor } = parseGuestPage(await getJson(lumaPaths.guestList(eventId, cursor, ticketKey)));
           guests.push(...batch);
           onProgress?.(guests.length);
           if (!nextCursor) break;

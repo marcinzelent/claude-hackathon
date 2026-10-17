@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { lookupEvent } from "../../../src/api";
 import { NeedsLumaLogin, loadEventGuests } from "../../../src/eventGuests";
 import { LumaError, useLuma } from "../../../src/luma/LumaBridge";
 import { FEATURED_EVENT } from "../../../src/luma/featured";
+import { parseEventLink } from "../../../src/luma/normalize";
 import { useStore } from "../../../src/store";
 import type { LumaEvent } from "../../../src/types";
 import { Button, Label, colors, scoreColor } from "../../../src/ui";
@@ -23,6 +24,9 @@ export default function EventDetails() {
   const [opening, setOpening] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Web only: Luma gives every guest a personal ticket link (?tk=...), which unlocks the guest list without a sign-in.
+  const [ticketLink, setTicketLink] = useState("");
+  const needsTicketLink = !luma.available && slug !== FEATURED_EVENT.slug;
 
   useEffect(() => {
     if (!slug) return;
@@ -40,7 +44,11 @@ export default function EventDetails() {
     setError(null);
     setOpening(true);
     try {
-      const { guests, warning } = await loadEventGuests(event, profile, luma, setStatus);
+      const ticketKey = needsTicketLink ? parseEventLink(ticketLink)?.ticketKey : undefined;
+      if (needsTicketLink && !ticketKey) {
+        throw new LumaError("Paste the full ticket link from your Luma confirmation email (it contains ?tk=).");
+      }
+      const { guests, warning } = await loadEventGuests(event, profile, luma, setStatus, ticketKey);
       if (warning) setError(warning);
       setGuests(event.name, guests);
       router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
@@ -104,6 +112,21 @@ export default function EventDetails() {
         </View>
       )}
 
+      {needsTicketLink && (
+        <>
+          <Label>Your Luma ticket link</Label>
+          <TextInput
+            style={styles.input}
+            value={ticketLink}
+            onChangeText={setTicketLink}
+            placeholder="https://luma.com/…?tk=…"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.hint}>On the web the guest list unlocks with the personal link from your Luma confirmation email.</Text>
+        </>
+      )}
       <Button title="Find who to meet" onPress={findPeople} loading={opening} />
       {status && <Text style={styles.hint}>{status}</Text>}
       {error && <Text style={styles.error}>{error}</Text>}
@@ -164,5 +187,14 @@ const styles = StyleSheet.create({
   scoreText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   body: { color: colors.text, lineHeight: 22, fontSize: 15 },
   hint: { marginTop: 6, color: colors.muted, fontSize: 13, lineHeight: 18 },
+  input: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    color: colors.text,
+    fontSize: 15,
+  },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
 });

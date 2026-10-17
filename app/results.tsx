@@ -5,7 +5,7 @@ import { useStore } from "../src/store";
 import type { Match, RankedGuest } from "../src/types";
 import { Button, colors, scoreColor } from "../src/ui";
 
-const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", website: "Website" } as const;
+const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", website: "Website" } as const;
 
 export default function Results() {
   const { profile, eventName, guests, matches, setMatches } = useStore();
@@ -175,12 +175,18 @@ function GuestCard({ guest }: { guest: RankedGuest }) {
             </Pressable>
           ) : null,
         )}
+        {guest.linkedinGuess && (
+          <Pressable onPress={() => Linking.openURL(guest.linkedinGuess!.url)}>
+            <Text style={styles.link}>Possible LinkedIn</Text>
+          </Pressable>
+        )}
         {guest.lumaUrl && (
           <Pressable onPress={() => Linking.openURL(guest.lumaUrl!)}>
             <Text style={styles.link}>Luma</Text>
           </Pressable>
         )}
       </View>
+      {guest.linkedinGuess && <Text style={styles.guess}>Found by search: {guest.linkedinGuess.reason}</Text>}
     </View>
   );
 }
@@ -213,6 +219,7 @@ const styles = StyleSheet.create({
   body: { color: colors.text, marginTop: 2, lineHeight: 21 },
   links: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 10 },
   link: { color: colors.accent, fontWeight: "600" },
+  guess: { color: colors.muted, fontSize: 12, marginTop: 6, lineHeight: 16 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
   chip: { backgroundColor: colors.accentSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   chipOpen: { backgroundColor: colors.accent },

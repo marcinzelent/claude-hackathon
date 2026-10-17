@@ -12,9 +12,10 @@
 2. You pick an event:
    - **Picked for you:** Claude reads the upcoming public Luma events in your city and suggests the ones that fit your goal, each with a short reason.
    - **Your Luma events (mobile app):** sign in to Luma once inside the app to see the events you're going to, or add any event by its link.
+   - **On the web:** paste the personal ticket link from your Luma confirmation email (`…?tk=…`) on the event page; it unlocks the guest list without a sign-in, through a narrow server relay that sends no cookies.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
-3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener), *learn from them*, and *words to know*: AI terms from that person's profile (like "MLOps" or "RAG") that you tap to get a one-line plain explanation, so you can follow the conversation. You also see the person's public links.
+3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener), *learn from them*, and *words to know*: AI terms from that person's profile (like "MLOps" or "RAG") that you tap to get a one-line plain explanation, so you can follow the conversation. You also see the person's public links (LinkedIn, X, Instagram, TikTok, YouTube, website, Luma).
 4. *Share my plan* sends your top 5 people, why to meet them and what to say, as plain text.
 
 ## How Claude is used
@@ -22,12 +23,13 @@
 - **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
 - **Event suggestions** (`app/api/discover+api.ts`, prompt in `prompts/events.ts`): Claude reads the names and hosts of your city's public Luma events and picks up to 8 that fit your goal.
 - **CV import** (`app/api/profile+api.ts`, prompt in `prompts/cvImport.ts`): Claude reads the uploaded PDF and suggests your target role and a short background, leaving out contact details. The PDF isn't stored.
+- **Finding LinkedIn profiles (demo event only)** (`app/api/find-linkedin+api.ts`, prompts in `prompts/findLinkedin.ts`): for guests with a full name but no LinkedIn link, Claude's web search suggests candidates, Apify loads them, and the match counts only if the name agrees *and* either one of their social handles is also the LinkedIn address or Claude finds something else that agrees (company, job, city, website). A hit shows as "Possible LinkedIn" and feeds the ranking. Built for our team's demo event, where every guest agreed; not for real events without the guests' consent.
 - **What Claude produces:** a score, a one-line reason, a conversation opener, a learning tip and up to 3 AI terms from their profile explained for a newcomer, for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
 - **Where:** the call runs in a server route (`app/api/rank+api.ts`), so the API key never reaches the phone. The prompt lives in `prompts/rank.ts`.
 
 ## Privacy by design
 - Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
-- LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn.
+- LinkedIn import only fetches **your own** profile, from the link you paste. Other guests' LinkedIn profiles are looked up only for our team's demo event, where everyone agreed (see "Finding LinkedIn profiles" above).
 - Guest data only lives in memory and is gone when you close the app. Nothing is saved to disk on a server: to avoid repeat calls to Claude, Luma and LinkedIn, the server keeps recent answers in memory for up to an hour (`src/server/cache.ts`) and forgets them on restart.
 - It only shows guests that you could already see on Luma yourself.
 - The demo and video use **fake sample guests** (`data/sample-guests.json`), not real people.
@@ -38,11 +40,11 @@ cp .env.example .env    # paste your ANTHROPIC_API_KEY (and optionally APIFY_TOK
 npm install
 npx expo start          # press w for web, or scan the QR code with Expo Go on your phone
 ```
-- **Web:** the sample event and paste mode work. Live Luma loading needs the phone app.
+- **Web:** the sample event and paste mode work, and a Luma guest list loads with your personal ticket link. Signing in to Luma to list *your* events needs the phone app.
 - **Phone:** install **Expo Go** and scan the QR code. Your phone and laptop must be on the same Wi-Fi, because the app calls the ranking route on the laptop's dev server. If that doesn't work, set `EXPO_PUBLIC_API_URL=http://<laptop-ip>:8081` in `.env`.
 - **Checks:** `npm run typecheck` and `npm test`.
 
-**Heads-up about Luma:** Luma has no public guest API for guests, so `src/luma/config.ts` uses the internal endpoints luma.com itself calls. They weren't verified while building and may change. If live loading fails:
+**Heads-up about Luma:** Luma has no public guest API for guests, so `src/luma/config.ts` uses the internal endpoints luma.com itself calls (`api.luma.com`, verified on 2026-10-17 in a signed-in browser). They may change without notice. If live loading fails:
 1. Open the event on luma.com, open DevTools and go to the Network tab.
 2. Click "N Going".
 3. Copy the real request URL into `src/luma/config.ts`.
@@ -67,6 +69,9 @@ Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in
 | `app/api/profile+api.ts` | Server route where Claude reads your CV PDF |
 | `app/api/linkedin+api.ts`, `src/server/apify.ts` | Server route that fetches your own LinkedIn profile via Apify for Claude |
 | `app/api/discover+api.ts`, `app/api/luma-event+api.ts`, `src/server/luma.ts` | Server routes for public Luma events: suggestions for your city, and lookup by link |
+| `app/api/luma+api.ts`, `src/luma/proxy.ts` | Web-only relay for a guest list unlocked by a ticket link (no cookies, nothing stored) |
+| `app/api/find-linkedin+api.ts`, `src/server/findLinkedin.ts` | Finds possible LinkedIn profiles for guests who didn't link one (web search, Apify, Claude); demo event only |
+| `docs/luma-connection-handoff.md` | How the Luma import works and what it returns |
 | `src/api.ts` | The app's calls to those server routes |
 | `prompts/` | The Claude prompts (tweak them here) |
 | `src/luma/` | Luma bridge (hidden WebView), endpoint config and response parsing |
@@ -95,7 +100,7 @@ Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus found
 - [React Native](https://reactnative.dev) and [react-native-web](https://necolas.github.io/react-native-web/)
 - [react-native-webview](https://github.com/react-native-webview/react-native-webview)
 - [expo-document-picker](https://docs.expo.dev/versions/latest/sdk/document-picker/)
-- [Apify](https://apify.com) actor [harvestapi/linkedin-profile-scraper](https://apify.com/harvestapi/linkedin-profile-scraper) (your own profile only)
+- [Apify](https://apify.com) actor [harvestapi/linkedin-profile-scraper](https://apify.com/harvestapi/linkedin-profile-scraper) (your own profile, and the consenting teammates in the demo event)
 - [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
 - [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
 - [Luma](https://luma.com) (event data, through the user's own signed-in session)

@@ -5,14 +5,18 @@
 export const LUMA_WEB_ORIGIN = "https://luma.com";
 export const LUMA_SIGNIN_URL = "https://luma.com/signin";
 
+// The host luma.com's own pages call (verified 2026-10-17 in a signed-in browser). Used by the web relay.
+export const LUMA_API_BASE = "https://api.luma.com";
 // Tried in order until one answers.
-export const LUMA_API_BASES = ["https://api2.luma.com", "https://api.lu.ma"];
+export const LUMA_API_BASES = [LUMA_API_BASE, "https://api2.luma.com", "https://api.lu.ma"];
 
 export const lumaPaths = {
   resolveSlug: (slug: string) => `/url?url=${encodeURIComponent(slug)}`,
-  guestList: (eventApiId: string, cursor?: string) =>
+  // A personal ticket key (the `tk` in a guest's ticket link) unlocks the guest list without a sign-in.
+  guestList: (eventApiId: string, cursor?: string, ticketKey?: string) =>
     `/event/get-guest-list?event_api_id=${encodeURIComponent(eventApiId)}` +
     `&pagination_limit=100` +
+    (ticketKey ? `&ticket_key=${encodeURIComponent(ticketKey)}` : "") +
     (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : ""),
   // Public "Discover" list for a city (no sign-in). The place id comes from resolveSlug("berlin").
   discover: (placeApiId: string, cursor?: string) =>

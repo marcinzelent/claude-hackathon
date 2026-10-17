@@ -2,8 +2,13 @@ export type GuestLinks = {
   linkedin?: string;
   twitter?: string;
   instagram?: string;
+  tiktok?: string;
+  youtube?: string;
   website?: string;
 };
+
+/** A LinkedIn profile found by search for a guest who didn't connect one (demo event only); always a "possible" match. */
+export type LinkedinGuess = { url: string; reason: string };
 
 export type Guest = {
   id: string;
@@ -13,6 +18,7 @@ export type Guest = {
   avatarUrl?: string;
   lumaUrl?: string;
   links: GuestLinks;
+  linkedinGuess?: LinkedinGuess;
 };
 
 export type LumaEvent = {
