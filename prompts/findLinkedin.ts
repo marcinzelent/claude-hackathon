@@ -11,7 +11,7 @@ export function searchUserPrompt(guest: { name: string; bio?: string; username?:
     `Name: ${guest.name}`,
     guest.bio ? `Bio on the event page: ${guest.bio}` : "No bio on the event page.",
     guest.username ? `Event-platform username: ${guest.username}` : "",
-    guest.links.length ? `Other profiles they linked: ${guest.links.join(", ")}` : "",
+    guest.links.length ? `Other profiles they linked (handles often match the LinkedIn link): ${guest.links.join(", ")}` : "",
   ]
     .filter(Boolean)
     .join("\n");

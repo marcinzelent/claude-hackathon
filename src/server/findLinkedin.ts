@@ -13,6 +13,8 @@ export type FinderSteps = {
   fetchProfile: (url: string) => Promise<unknown>;
   /** Whether the profile is this guest, and why. */
   judge: (guest: Guest, profile: unknown) => Promise<{ match: boolean; reason: string }>;
+  /** Optional: one line per step, so a missing match can be explained in the server log. */
+  log?: (line: string) => void;
 };
 
 /** Candidates checked per guest; each costs one Apify run. */
@@ -63,15 +65,22 @@ export async function findLinkedin(guest: Guest, steps: FinderSteps): Promise<Li
     .filter((u): u is string => u !== null)
     .slice(0, MAX_CANDIDATES);
 
+  steps.log?.(`search found ${urls.length} candidate(s)`);
+
   for (const url of urls) {
     let profile: unknown;
     try {
       profile = await steps.fetchProfile(url);
-    } catch {
+    } catch (e) {
+      steps.log?.(`${url}: couldn't load (${e instanceof Error ? e.message : "error"})`);
       continue;
     }
-    if (!namesMatch(guest.name, profileName(profile))) continue;
+    if (!namesMatch(guest.name, profileName(profile))) {
+      steps.log?.(`${url}: name differs ("${profileName(profile) ?? "no name"}")`);
+      continue;
+    }
     const verdict = await steps.judge(guest, profile);
+    steps.log?.(`${url}: ${verdict.match ? "match" : "no match"} (${verdict.reason})`);
     if (verdict.match) return { url, reason: verdict.reason };
   }
   return null;

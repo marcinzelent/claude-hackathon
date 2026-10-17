@@ -16,12 +16,15 @@ const SEARCHES_PER_GUEST = 3;
 
 const VerdictSchema = z.object({ match: z.boolean(), reason: z.string() });
 
-/** linkedin.com/in/ links in Claude's answer text. Links that only appear in the search results were rejected by Claude. */
-export function linkedinLinksIn(content: unknown[]): string[] {
-  const text = content
+const textOf = (content: unknown[]) =>
+  content
     .filter((b): b is { type: "text"; text: string } => (b as { type?: string })?.type === "text")
     .map((b) => b.text)
     .join("\n");
+
+/** linkedin.com/in/ links in Claude's answer text. Links that only appear in the search results were rejected by Claude. */
+export function linkedinLinksIn(content: unknown[]): string[] {
+  const text = textOf(content);
   return [...new Set(text.match(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[^\s"'<>)\],]+/gi) ?? [])];
 }
 
@@ -38,11 +41,18 @@ export function linkedinSteps(client: Anthropic): FinderSteps {
         messages: [
           {
             role: "user",
-            content: searchUserPrompt({ name: guest.name, bio: guest.bio, username: guest.username, links: Object.keys(guest.links) }),
+            content: searchUserPrompt({
+              name: guest.name,
+              bio: guest.bio,
+              username: guest.username,
+              links: Object.values(guest.links).filter((v): v is string => !!v),
+            }),
           },
         ],
       });
-      return linkedinLinksIn(response.content);
+      const links = linkedinLinksIn(response.content);
+      if (!links.length) console.info("find-linkedin: search answer:", textOf(response.content).slice(0, 200));
+      return links;
     },
 
     fetchProfile: fetchLinkedinProfile,
