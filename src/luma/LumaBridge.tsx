@@ -20,7 +20,7 @@ type Pending = { resolve: (r: BridgeResponse) => void; reject: (e: Error) => voi
 // Kept in memory only and emptied on reload (e.g. after signing in).
 const CACHE_MS = 3 * 60 * 1000;
 
-type LumaApi = {
+export type LumaApi = {
   available: boolean;
   isSignedIn: () => Promise<boolean>;
   fetchMyEvents: () => Promise<LumaEvent[]>;

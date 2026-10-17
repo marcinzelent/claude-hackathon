@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { enrichTeamEvent, lookupEvent } from "../../../src/api";
+import { lookupEvent } from "../../../src/api";
+import { NeedsLumaLogin, loadEventGuests } from "../../../src/eventGuests";
 import { LumaError, useLuma } from "../../../src/luma/LumaBridge";
 import { FEATURED_EVENT } from "../../../src/luma/featured";
 import { useStore } from "../../../src/store";
@@ -34,40 +35,22 @@ export default function EventDetails() {
     };
   }, [slug]);
 
-  // Our own event's guests are the teammates: fetch their LinkedIn profiles via Apify (cached), then rank.
-  const findTeam = async () => {
-    if (!event) return;
-    setOpening(true);
-    setStatus("Fetching LinkedIn profiles through Apify, then Claude scores them. The first time takes up to a minute…");
-    try {
-      const team = await enrichTeamEvent();
-      const others = team.guests.filter((g) => !profile.linkedinUrl || g.links.linkedin !== profile.linkedinUrl);
-      if (team.failed?.length) setError(`Couldn't fetch ${team.failed.length} profile(s); ranking the rest.`);
-      setGuests(event.name, others);
-      router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't load the team's profiles.");
-    } finally {
-      setOpening(false);
-      setStatus(null);
-    }
-  };
-
   const findPeople = async () => {
     if (!event) return;
     setError(null);
-    if (event.slug === FEATURED_EVENT.slug) return findTeam();
-    if (!luma.available) {
-      return setError("Loading a guest list needs the phone app (Expo Go). On web, use the sample event or paste the list.");
-    }
     setOpening(true);
     try {
-      if (!(await luma.isSignedIn())) return router.push("/login");
-      const guests = await luma.fetchGuests(event.id, (n) => setStatus(`Loaded ${n} guests…`));
+      const { guests, warning } = await loadEventGuests(event, profile, luma, setStatus);
+      if (warning) setError(warning);
       setGuests(event.name, guests);
       router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
     } catch (e) {
-      setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
+      if (e instanceof NeedsLumaLogin) return router.push("/login");
+      const team = event.slug === FEATURED_EVENT.slug;
+      const fallback = team
+        ? "Couldn't load the team's profiles."
+        : "Something went wrong talking to Luma. Try pasting the list instead.";
+      setError(e instanceof LumaError || (team && e instanceof Error) ? e.message : fallback);
     } finally {
       setOpening(false);
       setStatus(null);
