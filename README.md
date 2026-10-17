@@ -8,7 +8,7 @@
 - **What the demo lets them do:** paste a Luma event link, and Claude ranks the guest list for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
 
 ## What it does
-1. You upload your CV or LinkedIn PDF (on linkedin.com: your profile → Resources/More → Save to PDF), and Claude fills in the job you should look for and your background. You can also type them.
+1. You paste your own LinkedIn link (fetched once through Apify) or upload your CV / LinkedIn PDF, and Claude fills in the job you should look for and your background. You can also type them.
 2. You load the guests:
    - **From Luma (mobile app):** sign in to Luma once inside the app, then paste an event link you're registered for.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
@@ -25,13 +25,14 @@
 
 ## Privacy by design
 - Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
+- LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn.
 - Guest data only lives in memory and is gone when you close the app. Nothing is saved on a server.
 - It only shows guests that you could already see on Luma yourself.
 - The demo and video use **fake sample guests** (`data/sample-guests.json`), not real people.
 
 ## How to run it
 ```bash
-cp .env.example .env    # paste your ANTHROPIC_API_KEY into .env (git-ignored, never commit it)
+cp .env.example .env    # paste your ANTHROPIC_API_KEY (and optionally APIFY_TOKEN) into .env; never commit it
 npm install
 npx expo start          # press w for web, or scan the QR code with Expo Go on your phone
 ```
@@ -54,6 +55,7 @@ Paste mode always works as a fallback.
 | `app/login.tsx` | Luma sign-in inside the app |
 | `app/api/rank+api.ts` | Server route that calls Claude to rank guests |
 | `app/api/profile+api.ts` | Server route where Claude reads your CV PDF |
+| `app/api/linkedin+api.ts`, `src/server/apify.ts` | Server route that fetches your own LinkedIn profile via Apify for Claude |
 | `prompts/` | The Claude prompts (tweak them here) |
 | `src/luma/` | Luma bridge (hidden WebView), endpoint config and response parsing |
 | `data/sample-guests.json` | Fake guests for the demo |
@@ -81,6 +83,7 @@ Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus found
 - [React Native](https://reactnative.dev) and [react-native-web](https://necolas.github.io/react-native-web/)
 - [react-native-webview](https://github.com/react-native-webview/react-native-webview)
 - [expo-document-picker](https://docs.expo.dev/versions/latest/sdk/document-picker/)
+- [Apify](https://apify.com) actor [harvestapi/linkedin-profile-scraper](https://apify.com/harvestapi/linkedin-profile-scraper) (your own profile only)
 - [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
 - [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
 - [Luma](https://luma.com) (event data, through the user's own signed-in session)

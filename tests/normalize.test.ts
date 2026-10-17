@@ -7,6 +7,7 @@ import {
   parsePastedGuests,
   toJsonl,
 } from "../src/luma/normalize";
+import { parseLinkedinProfileUrl } from "../src/linkedinUrl";
 
 describe("parseEventSlug", () => {
   it("accepts full links, lu.ma links and bare slugs", () => {
@@ -80,5 +81,17 @@ describe("parsePastedGuests", () => {
     const jsonl = toJsonl([{ user: { api_id: "u1", name: "A" } }, { user: { api_id: "u2", name: "B" } }]);
     expect(parsePastedGuests(jsonl)).toHaveLength(2);
     expect(parsePastedGuests(JSON.stringify({ entries: [{ user: { api_id: "u1", name: "A" } }] }))).toHaveLength(1);
+  });
+});
+
+describe("parseLinkedinProfileUrl", () => {
+  it("canonicalises profile links", () => {
+    expect(parseLinkedinProfileUrl("linkedin.com/in/ada-example")).toBe("https://www.linkedin.com/in/ada-example");
+    expect(parseLinkedinProfileUrl("https://de.linkedin.com/in/ada-example/?trk=x")).toBe("https://www.linkedin.com/in/ada-example");
+  });
+  it("rejects anything that isn't a profile", () => {
+    expect(parseLinkedinProfileUrl("https://www.linkedin.com/company/acme")).toBeNull();
+    expect(parseLinkedinProfileUrl("https://evil.com/linkedin.com/in/x")).toBeNull();
+    expect(parseLinkedinProfileUrl("")).toBeNull();
   });
 });

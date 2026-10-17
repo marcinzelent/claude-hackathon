@@ -1,6 +1,6 @@
 // Turns an uploaded CV / LinkedIn "Save to PDF" into the home screen's goal and background.
 
-export const CV_IMPORT_SYSTEM_PROMPT = `You read a job seeker's CV or LinkedIn "Save to PDF" export and fill in two short fields for an app
+export const CV_IMPORT_SYSTEM_PROMPT = `You read a job seeker's CV, LinkedIn "Save to PDF" export or LinkedIn profile data (JSON) and fill in two short fields for an app
 that tells them who to meet at AI meetups.
 
 Return:

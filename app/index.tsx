@@ -3,7 +3,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
-import { importCv } from "../src/api";
+import { importCv, importLinkedin, type ImportedProfile } from "../src/api";
+import { parseLinkedinProfileUrl } from "../src/linkedinUrl";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { parseEventSlug, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
@@ -21,26 +22,40 @@ export default function Home() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState<"cv" | "linkedin" | null>(null);
   const [importNote, setImportNote] = useState<string | null>(null);
+  const [linkedinUrl, setLinkedinUrl] = useState("");
 
   const needsGoal = !profile.goal.trim();
+
+  const runImport = async (kind: "cv" | "linkedin", label: string, load: () => Promise<ImportedProfile>) => {
+    setImporting(kind);
+    try {
+      const { goal, background, tip } = await load();
+      setProfile({ goal, background });
+      setImportNote(tip ? `Filled in from your ${label}. Tip: ${tip}` : `Filled in from your ${label}. Edit anything that's off.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Import failed.");
+    } finally {
+      setImporting(null);
+    }
+  };
 
   const pickCv = async () => {
     setError(null);
     setImportNote(null);
     const picked = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
     if (picked.canceled || !picked.assets[0]) return;
-    setImporting(true);
-    try {
-      const { goal, background, tip } = await importCv(picked.assets[0]);
-      setProfile({ goal, background });
-      setImportNote(tip ? `Filled in from your CV. Tip: ${tip}` : "Filled in from your CV. Edit anything that's off.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't read that file.");
-    } finally {
-      setImporting(false);
-    }
+    const file = picked.assets[0];
+    await runImport("cv", "CV", () => importCv(file));
+  };
+
+  const importFromLinkedin = async () => {
+    setError(null);
+    setImportNote(null);
+    const url = parseLinkedinProfileUrl(linkedinUrl);
+    if (!url) return setError("Paste your LinkedIn profile link, like linkedin.com/in/your-name.");
+    await runImport("linkedin", "LinkedIn profile", () => importLinkedin(url));
   };
 
   const go = (eventName: string, guests: Guest[]) => {
@@ -87,9 +102,34 @@ export default function Home() {
           tells you who to meet, why, how to start the conversation, and what you can learn from them.
         </Text>
 
-        <Button title="Import my CV or LinkedIn PDF" variant="secondary" onPress={pickCv} loading={importing} />
+        <Label>Your LinkedIn profile link</Label>
+        <TextInput
+          style={styles.input}
+          placeholder="linkedin.com/in/your-name"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          value={linkedinUrl}
+          onChangeText={setLinkedinUrl}
+        />
+        <Button
+          title="Import from LinkedIn"
+          variant="secondary"
+          onPress={importFromLinkedin}
+          loading={importing === "linkedin"}
+          disabled={importing !== null || !linkedinUrl.trim()}
+        />
+        {importing === "linkedin" && <Text style={styles.status}>Fetching your profile, this can take up to a minute…</Text>}
+        <Button
+          title="Or upload your CV / LinkedIn PDF"
+          variant="secondary"
+          onPress={pickCv}
+          loading={importing === "cv"}
+          disabled={importing !== null}
+        />
         <Text style={styles.hint}>
-          LinkedIn PDF: on linkedin.com (desktop), open your profile, then Resources (or More), then Save to PDF.
+          Only your own profile is imported. LinkedIn PDF: on linkedin.com (desktop), open your profile, then Resources
+          (or More), then Save to PDF.
         </Text>
         {importNote && <Text style={styles.note}>{importNote}</Text>}
 

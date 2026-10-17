@@ -38,3 +38,15 @@ export async function importCv(file: { uri: string; name: string; mimeType?: str
   if (!res.ok || !data.goal) throw new Error(data.error ?? `Import failed (HTTP ${res.status}).`);
   return { goal: data.goal, background: data.background ?? "", tip: data.tip ?? null };
 }
+
+/** Imports the user's own LinkedIn profile by link (server fetches it via Apify, Claude summarises it). */
+export async function importLinkedin(url: string): Promise<ImportedProfile> {
+  const res = await fetch(`${apiBase()}/api/linkedin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Partial<ImportedProfile> & { error?: string };
+  if (!res.ok || !data.goal) throw new Error(data.error ?? `Import failed (HTTP ${res.status}).`);
+  return { goal: data.goal, background: data.background ?? "", tip: data.tip ?? null };
+}
