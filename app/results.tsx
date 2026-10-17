@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { exportJson } from "../src/export";
 import { toGuestJson } from "../src/luma/normalize";
 import { rankGuests } from "../src/rank/client";
 import { useStore } from "../src/store";
@@ -7,26 +8,6 @@ import type { RankedGuest } from "../src/types";
 import { Button, colors, scoreColor } from "../src/ui";
 
 const LINK_LABELS = { linkedin: "LinkedIn", twitter: "X", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", website: "Website" } as const;
-
-// Phone: the share sheet. Web: copy to the clipboard, or download a file if copying isn't allowed.
-async function exportText(json: string): Promise<string | null> {
-  if (Platform.OS !== "web") {
-    await Share.share({ message: json });
-    return null;
-  }
-  try {
-    await navigator.clipboard.writeText(json);
-    return "Copied JSON to clipboard";
-  } catch {
-    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "guests.json";
-    link.click();
-    URL.revokeObjectURL(url);
-    return "Downloaded guests.json";
-  }
-}
 
 export default function Results() {
   const { profile, eventName, guests, matches, setMatches } = useStore();
@@ -58,10 +39,10 @@ export default function Results() {
       .sort((a, b) => (b.match?.score ?? -1) - (a.match?.score ?? -1));
   }, [guests, matches]);
 
-  const exportJson = async () => {
+  const onExport = async () => {
     setExportNote(null);
     try {
-      setExportNote(await exportText(toGuestJson(ranked)));
+      setExportNote(await exportJson(toGuestJson(ranked)));
     } catch {
       setExportNote("Couldn't export the guest list. Please try again.");
     }
@@ -94,7 +75,7 @@ export default function Results() {
               <Button title="Try again" onPress={run} />
             </>
           )}
-          <Button title="Export as JSON" variant="secondary" onPress={exportJson} />
+          <Button title="Export as JSON" variant="secondary" onPress={onExport} />
           {exportNote && <Text style={styles.meta}>{exportNote}</Text>}
         </View>
       }

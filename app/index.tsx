@@ -36,7 +36,6 @@ export default function Home() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [disconnectFailed, setDisconnectFailed] = useState(false);
 
-  const needsGoal = !profile.goal.trim();
   const connected = luma.status === "connected";
 
   const showError = (e: unknown) => {
@@ -81,7 +80,7 @@ export default function Home() {
 
   const go = (eventName: string, guests: Guest[]) => {
     setGuests(eventName, guests);
-    router.push("/results");
+    router.push("/guests");
   };
 
   const loadFromLuma = async () => {
@@ -91,7 +90,12 @@ export default function Home() {
     setLoading(true);
     setStatus("Checking your Luma sign-in…");
     try {
-      // A personal ticket link (?tk=) unlocks the guest list without a sign-in.
+      // A personal ticket link (?tk=) unlocks the guest list without a sign-in. On web it's the only way.
+      if (!link.ticketKey && !luma.available) {
+        setStatus(null);
+        setError("On the web, paste your personal ticket link: the event link from your Luma email that ends in ?tk=….");
+        return;
+      }
       if (!link.ticketKey && !(await luma.isSignedIn())) {
         setStatus(null);
         router.push("/login");
@@ -186,9 +190,9 @@ export default function Home() {
                 key={event.apiId}
                 accessibilityRole="button"
                 accessibilityLabel={`${event.name}, ${formatEventDate(event.startAt, event.timezone)}`}
-                disabled={needsGoal || loading}
+                disabled={loading}
                 onPress={() => loadEvent(event)}
-                style={[styles.eventRow, (needsGoal || loading) && styles.eventDisabled]}
+                style={[styles.eventRow, loading && styles.eventDisabled]}
               >
                 <Text style={styles.eventName}>{event.name}</Text>
                 <Text style={styles.eventDate}>{formatEventDate(event.startAt, event.timezone)}</Text>
@@ -198,30 +202,28 @@ export default function Home() {
           </View>
         )}
 
-        {luma.available && (
-          <>
-            <Label>{connected ? "Or paste an event link" : "Luma event link"}</Label>
-            <TextInput
-              style={styles.input}
-              placeholder="luma.com/your-event"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={eventInput}
-              onChangeText={setEventInput}
-            />
-            <Button title="Find who to meet" onPress={loadFromLuma} loading={loading} disabled={needsGoal} />
-            {status && <Text style={styles.status}>{status}</Text>}
-            <Text style={styles.hint}>
-              Works for events you're registered for, when the host shows the guest list. Your Luma sign-in stays on
-              this phone.
-            </Text>
-          </>
-        )}
+        <Label>
+          {connected ? "Or paste an event link" : luma.available ? "Luma event link" : "Your personal Luma ticket link"}
+        </Label>
+        <TextInput
+          style={styles.input}
+          placeholder={luma.available ? "luma.com/your-event" : "luma.com/your-event?tk=…"}
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={eventInput}
+          onChangeText={setEventInput}
+        />
+        <Button title="Import guest list" onPress={loadFromLuma} loading={loading} disabled={!eventInput.trim()} />
+        {status && <Text style={styles.status}>{status}</Text>}
+        <Text style={styles.hint}>
+          {luma.available
+            ? "Works for events you're registered for, when the host shows the guest list. Your Luma sign-in stays on this phone."
+            : "Open your Luma confirmation email (or your ticket on luma.com) and copy the event link that ends in ?tk=…. It works for events you're registered for, when the host shows the guest list."}
+        </Text>
 
         <Button
           title="Try with a sample event"
           variant="secondary"
-          disabled={needsGoal}
           onPress={() => go("Sample: Berlin AI Meetup", sampleGuests as Guest[])}
         />
         {luma.available && !pasteOpen && (
@@ -238,7 +240,7 @@ export default function Home() {
               onChangeText={setPasted}
               multiline
             />
-            <Button title="Rank these guests" onPress={usePasted} disabled={needsGoal || !pasted.trim()} />
+            <Button title="Import these guests" onPress={usePasted} disabled={!pasted.trim()} />
           </View>
         )}
 
@@ -256,7 +258,6 @@ export default function Home() {
           </View>
         )}
 
-        {needsGoal && <Text style={styles.hint}>Start by telling us what job you're looking for.</Text>}
         {error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
     </KeyboardAvoidingView>

@@ -4,6 +4,7 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { createLumaClient, LumaError, type LumaClient, type LumaResponse, type LumaTransport } from "./client";
 import { LUMA_API_BASE, LUMA_SIGNOUT_API_PATH, LUMA_SIGNOUT_URL, LUMA_WEB_ORIGIN } from "./config";
 import { nextLumaState, type LumaState } from "./session";
+import { apiBase } from "../api";
 
 export { LumaError } from "./client";
 
@@ -45,11 +46,13 @@ export function useLuma(): LumaApi {
   return ctx;
 }
 
-// On web, Luma's API blocks requests from other sites (CORS, checked 2026-10-17), even ticket
-// links (?tk=), so web never calls Luma: it fails right away, and no ticket key leaves the browser.
-// Web uses the sample event and paste mode.
-const webTransport: LumaTransport = async () => {
-  throw new LumaError("unreachable", "Loading from Luma needs the RoomRadar phone app.");
+// On web, Luma's API blocks requests from other sites (CORS, checked 2026-10-17), so the
+// web version goes through our own narrow relay (/api/luma, see ./proxy.ts). It only allows
+// the event lookup and ticket-link guest lists; there is no Luma sign-in on web.
+const webTransport: LumaTransport = async (url) => {
+  const path = url.startsWith(LUMA_API_BASE) ? url.slice(LUMA_API_BASE.length) : url;
+  const r = await fetch(`${apiBase()}/api/luma?path=${encodeURIComponent(path)}`);
+  return { status: r.status, body: await r.text() };
 };
 
 export function LumaBridgeProvider({ children }: { children: ReactNode }) {

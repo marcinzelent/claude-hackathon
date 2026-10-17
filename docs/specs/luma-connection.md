@@ -89,7 +89,7 @@ On first launch, the user connects their own Luma account inside the Expo app by
   - A "connected" flag may be remembered locally, but the real check is always `isSignedIn()`.
 - **Export:** the existing JSONL export switches to a JSON array of `Guest`.
 - **Self-exclusion:** the signed-in user is removed from the loaded guest list by Luma user ID when known (otherwise by name, per the existing `myName` plan in the build spec).
-- **Web:** no Luma sign-in (browsers block cross-site cookies). The connect screen explains this. Ticket links are loaded through the same client with a plain `fetch` transport. If Luma's CORS blocks this in the browser, the web keeps the sample and paste modes only. No server-side session handling is added.
+- **Web:** no Luma sign-in (browsers block cross-site cookies). The connect screen explains this. *Updated 2026-10-17:* Luma's CORS blocks browser requests, so ticket links go through the same client with a transport that calls our own narrow relay route. The relay only allows the event lookup and ticket-link guest lists, sends no cookies, and doesn't log or store the ticket key. No server-side session handling is added.
 - **Privacy:** the Luma session lives only in the phone's WebView cookie store. Ticket keys are never logged or sent to RoomRadar's server. Guest data stays in memory, as today.
 
 ## Testing Decisions

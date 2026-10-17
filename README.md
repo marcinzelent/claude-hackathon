@@ -5,19 +5,19 @@
 ## The problem
 - **Audience:** job seekers trying to break into AI, for example career changers, bootcamp grads and junior engineers in Berlin.
 - **Their problem with AI today:** the AI industry hires through networks. Meetups are full of the right people, but newcomers don't know who's who, what to ask, or how to start the conversation.
-- **What the demo lets them do:** paste a Luma event link, and Claude ranks the guest list for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
+- **What the demo lets them do:** import the guest list of a Luma event they're registered for (with every guest's connected profiles, as JSON), and let Claude rank it for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
 
 ## What it does
-1. **Connect Luma** (phone app): on first launch you sign in on Luma's own page inside the app. Or tap **Try the sample event** to skip.
-2. You type the job you want and a line about your background.
-3. You pick the guests:
-   - **Your Luma events:** once connected, home lists your upcoming events whose guest list you're allowed to see. Tap one.
-   - **Event link:** paste any Luma event link you're registered for. Your **personal ticket link** (the one with `?tk=` from your confirmation email) works even without connecting Luma.
+1. **Connect Luma** (phone app): on first launch you sign in on Luma's own page inside the app. On the web, or to skip, tap **Continue** / **Try the sample event**.
+2. **Import a guest list:**
+   - **Your Luma events** (phone app): once connected, home lists your upcoming events whose guest list you're allowed to see. Tap one.
+   - **Ticket link** (web and phone): paste your **personal ticket link**, the event link from your Luma confirmation email that ends in `?tk=…`. It works without signing in.
+   - **Event link** (phone app, signed in): any Luma event link you're registered for.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
-4. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener) and *learn from them*, plus the person's public profiles (LinkedIn, X, Instagram, TikTok, YouTube, website).
-5. You can export the guest list, with Claude's ranking, as a JSON array.
-6. **Disconnect Luma** at the bottom of home signs you out of Luma inside the app.
+3. **Guest list:** every guest with their connected profiles (LinkedIn, X, Instagram, TikTok, YouTube, website, Luma), as a JSON array you can copy or download as `guests.json`.
+4. **Optional: Rank with Claude.** Type the job you want and a line about your background, and Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener) and *learn from them*.
+5. **Disconnect Luma** at the bottom of home signs you out of Luma inside the app.
 
 ## How Claude is used
 - **Model:** `claude-opus-5-5` through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Server-side refusal fallbacks are switched on (`fallbacks: "default"`).
@@ -29,7 +29,7 @@
 - Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
 - Guest data only lives in memory and is gone when you close the app. Nothing is saved on a server.
 - It only shows guests that you could already see on Luma yourself.
-- Your personal ticket key (`?tk=`) works like a password for that guest list: it's only sent to Luma, never logged or sent to our server.
+- Your personal ticket key (`?tk=`) works like a password for that guest list. On the phone it goes straight to Luma. On the web, browsers block Luma's API from other sites, so our server relays the request (`app/api/luma+api.ts`): it only allows the event lookup and the guest list, never stores or logs the key, and sends no cookies.
 - The demo and video use **fake sample guests** (`data/sample-guests.json`), not real people.
 
 ## How to run it
@@ -38,7 +38,7 @@ cp .env.example .env    # paste your ANTHROPIC_API_KEY into .env (git-ignored, n
 npm install
 npx expo start          # press w for web, or scan the QR code with Expo Go on your phone
 ```
-- **Web:** the sample event and paste mode work. Live Luma loading needs the phone app: Luma's API blocks requests from other websites, so the web version can't load guest lists.
+- **Web:** import with your personal ticket link (`?tk=`), the sample event or paste mode. Signing in to Luma and the "your events" list need the phone app, because a website can't use your Luma login.
 - **Phone:** install **Expo Go** and scan the QR code. Your phone and laptop must be on the same Wi-Fi, because the app calls the ranking route on the laptop's dev server. If that doesn't work, set `EXPO_PUBLIC_API_URL=http://<laptop-ip>:8081` in `.env`.
 - **Checks:** `npm run typecheck` and `npm test`.
 
@@ -54,7 +54,9 @@ Paste mode always works as a fallback. The full design is in [docs/specs/luma-co
 |---|---|
 | `app/connect.tsx` | First screen: connect Luma or try the sample event |
 | `app/index.tsx` | Home screen: your goal, your Luma events, event link, sample and paste options, disconnect |
+| `app/guests.tsx` | Imported guest list: profiles, copy/download JSON, optional ranking |
 | `app/results.tsx` | Ranked guest cards and JSON export |
+| `app/api/luma+api.ts` | Narrow relay to Luma for the web version (ticket links only) |
 | `app/login.tsx` | Luma sign-in (and manual sign-out) inside the app |
 | `app/api/rank+api.ts` | Server route that calls Claude |
 | `prompts/rank.ts` | The Claude prompt (tweak it here) |

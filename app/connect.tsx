@@ -35,12 +35,17 @@ export default function Connect() {
         </>
       ) : (
         <Text style={styles.note}>
-          Connecting Luma needs the RoomRadar phone app. On the web you can try the sample event or paste a guest list
-          copied from Luma.
+          Signing in to Luma needs the RoomRadar phone app. On the web, you can import a guest list with your personal
+          ticket link (the event link from your Luma email that ends in ?tk=…), paste a guest list, or try the sample
+          event.
         </Text>
       )}
 
-      <Button title="Try the sample event" variant="secondary" onPress={continueWithout} />
+      <Button
+        title={luma.available ? "Try the sample event" : "Continue"}
+        variant="secondary"
+        onPress={continueWithout}
+      />
     </ScrollView>
   );
 }
