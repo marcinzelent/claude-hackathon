@@ -16,7 +16,7 @@ type LumaState = "loading" | "signedOut" | "ready" | "error" | "unavailable";
 export default function Events() {
   const router = useRouter();
   const luma = useLuma();
-  const { profile, setGuests, setSelected } = useStore();
+  const { profile, setProfile, setGuests, setSelected } = useStore();
   const [lumaState, setLumaState] = useState<LumaState>(luma.available ? "loading" : "unavailable");
   const [myEvents, setMyEvents] = useState<LumaEvent[]>([]);
   const [linked, setLinked] = useState<LumaEvent[]>([]);
@@ -136,6 +136,16 @@ export default function Events() {
         }}
       />
       <Text style={styles.meta}>Looking for: {profile.goal}</Text>
+      {/* Clears the saved profile (goal, background, LinkedIn link) and starts again from onboarding. */}
+      <Pressable
+        onPress={() => {
+          setProfile({ goal: "", background: "" });
+          router.replace("/onboarding");
+        }}
+        hitSlop={8}
+      >
+        <Text style={styles.startOver}>Start over</Text>
+      </Pressable>
 
       <Label>Your Luma events</Label>
       {lumaState === "loading" && <Text style={styles.hint}>Checking your Luma events…</Text>}
@@ -288,6 +298,7 @@ function EventCard({
 const styles = StyleSheet.create({
   page: { padding: 20, paddingBottom: 60, maxWidth: 640, width: "100%", alignSelf: "center" },
   headerLink: { color: colors.accent, fontSize: 16, fontWeight: "600" },
+  startOver: { color: colors.accent, fontWeight: "600", marginTop: 6 },
   meta: { color: colors.muted, marginTop: 4 },
   input: {
     backgroundColor: colors.card,
