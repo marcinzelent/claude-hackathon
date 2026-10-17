@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (branch ticket/03-json-export)
 
-- [ ] Export produces a valid JSON array of guests with their match data when ranked
-- [ ] Guests without profile links are included with their name
-- [ ] Result cards show TikTok and YouTube links when present
-- [ ] Typecheck and tests pass
+- [x] Export produces a valid JSON array of guests with their match data when ranked
+- [x] Guests without profile links are included with their name
+- [x] Result cards show TikTok and YouTube links when present
+- [x] Typecheck and tests pass
