@@ -26,9 +26,7 @@ export default function EventDetails() {
   const [error, setError] = useState<string | null>(null);
   // Web only: Luma gives every guest a personal ticket link (?tk=...), which unlocks the guest list without a sign-in.
   const [ticketLink, setTicketLink] = useState("");
-  // Our own event also works without one (the configured teammates), so there it's optional.
-  const showTicketLink = !luma.available;
-  const needsTicketLink = showTicketLink && slug !== FEATURED_EVENT.slug;
+  const needsTicketLink = !luma.available && slug !== FEATURED_EVENT.slug;
 
   useEffect(() => {
     if (!slug) return;
@@ -46,7 +44,7 @@ export default function EventDetails() {
     setError(null);
     setOpening(true);
     try {
-      const ticketKey = showTicketLink ? parseEventLink(ticketLink)?.ticketKey : undefined;
+      const ticketKey = needsTicketLink ? parseEventLink(ticketLink)?.ticketKey : undefined;
       if (needsTicketLink && !ticketKey) {
         throw new LumaError("Paste the full ticket link from your Luma confirmation email (it contains ?tk=).");
       }
@@ -114,9 +112,9 @@ export default function EventDetails() {
         </View>
       )}
 
-      {showTicketLink && (
+      {needsTicketLink && (
         <>
-          <Label>{needsTicketLink ? "Your Luma ticket link" : "Your Luma ticket link (optional)"}</Label>
+          <Label>Your Luma ticket link</Label>
           <TextInput
             style={styles.input}
             value={ticketLink}

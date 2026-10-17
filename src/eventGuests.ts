@@ -17,8 +17,7 @@ export async function loadEventGuests(
   onStatus: (status: string) => void,
   ticketKey?: string,
 ): Promise<{ guests: Guest[]; warning?: string }> {
-  // With a ticket link, even our own event loads its real Luma guest list; without one, the configured teammates.
-  if (event.slug === FEATURED_EVENT.slug && !ticketKey) {
+  if (event.slug === FEATURED_EVENT.slug) {
     onStatus("Fetching LinkedIn profiles through Apify, then Claude scores them. The first time takes up to a minute…");
     const team = await enrichTeamEvent();
     const others = team.guests.filter((g) => !profile.linkedinUrl || g.links.linkedin !== profile.linkedinUrl);
