@@ -31,6 +31,7 @@ const TEAM_LINKEDIN_URLS = [
   "https://linkedin.com/in/robin-kryszak",
   "https://www.linkedin.com/in/soeren-daehn/",
   "https://www.linkedin.com/in/aigam-shamali",
+  "https://www.linkedin.com/in/navid-ghayazi/",
 ];
 
 /** Teammates' LinkedIn links, canonicalised; .env can override with a comma or space separated list. */
