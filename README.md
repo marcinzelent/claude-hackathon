@@ -83,7 +83,7 @@ Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in
 | `tests/` | Unit tests for parsing, caching and the team event (Vitest) |
 
 ## Demo video and screenshots
-- **2-minute demo video:** TODO: add the link (it must open for anyone)
+- **2-minute demo video:** https://www.youtube.com/watch?v=7T4nunFyciI
 
 | 1. Tell it your goal | 2. Events picked for you | 3. Who to meet, and why | 4. Tap a word to learn it |
 |---|---|---|---|
