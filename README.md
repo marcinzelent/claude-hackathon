@@ -49,6 +49,13 @@ npx expo start          # press w for web, or scan the QR code with Expo Go on y
 
 Paste mode always works as a fallback.
 
+## Team demo event (real, consenting teammates)
+For the demo, our own teammates act as event guests, as if imported from Luma. All of them agreed to have their public LinkedIn profiles used. The flow in the app:
+1. **Onboarding:** paste your LinkedIn link and tap *Import from LinkedIn*. Claude fills in your goal and background, and the app remembers your link.
+2. **Your events → Team demo event → Find who to meet.** The server fetches the teammates' LinkedIn profiles through Apify, then Claude scores them using their full experience. You're left out automatically if your link is on the list.
+
+Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in `.env` can override them. The first tap fetches the profiles, which takes up to a minute. They're then cached in the git-ignored `data/team-event.json` (never commit it), so later taps are instant and cost no extra Apify credit. No extra commands are needed. LinkedIn's terms prohibit scraping, so this only runs on teammates who agreed, never on profiles a user types in.
+
 ## Project layout
 | Path | What it is |
 |---|---|

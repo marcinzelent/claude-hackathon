@@ -25,7 +25,8 @@ export async function fetchLinkedinProfile(profileUrl: string): Promise<unknown>
   if (!token) throw new ApifyError("Add APIFY_TOKEN to .env and restart the server.", 500);
 
   const url =
-    `https://api.apify.com/v2/acts/${APIFY_ACTOR_ID}/run-sync-get-dataset-items` + `?timeout=${RUN_TIMEOUT_SECONDS}`;
+    `${process.env.APIFY_BASE_URL || "https://api.apify.com"}/v2/acts/${APIFY_ACTOR_ID}/run-sync-get-dataset-items` +
+    `?timeout=${RUN_TIMEOUT_SECONDS}`;
   let res: Response;
   try {
     res = await fetch(url, {

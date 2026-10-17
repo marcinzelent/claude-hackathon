@@ -72,3 +72,29 @@ export async function discoverEvents(profile: Profile): Promise<Discovery> {
   if (!res.ok || !data.picks || !data.events) throw new Error(data.error ?? `Event suggestions failed (HTTP ${res.status}).`);
   return { city: data.city ?? "", events: data.events, picks: data.picks };
 }
+
+export type TeamEvent = {
+  name: string;
+  guests: Guest[];
+  enriched?: number; // how many profiles are already cached
+  failed?: { url: string; error: string }[];
+};
+
+/** The team's demo event guest list, or null if this server has none configured. */
+export async function fetchTeamEvent(): Promise<TeamEvent | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/team-event`);
+    if (!res.ok) return null;
+    return (await res.json()) as TeamEvent;
+  } catch {
+    return null;
+  }
+}
+
+/** Fetches teammates' LinkedIn profiles through Apify (server-side, cached) and returns the enriched list. */
+export async function enrichTeamEvent(): Promise<TeamEvent> {
+  const res = await fetch(`${apiBase()}/api/team-event`, { method: "POST" });
+  const data = (await res.json().catch(() => ({}))) as Partial<TeamEvent> & { error?: string };
+  if (!res.ok || !data.guests) throw new Error(data.error ?? `LinkedIn fetch failed (HTTP ${res.status}).`);
+  return data as TeamEvent;
+}

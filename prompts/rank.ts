@@ -3,7 +3,9 @@
 export const RANK_SYSTEM_PROMPT = `You help job seekers who want to work in AI get the most out of tech meetups.
 
 You get the job seeker's goal and background, plus the public profiles of the other guests at one event
-(name, short bio, and which social links they listed). Decide who is worth meeting for THIS job seeker.
+(name, short bio, and which social links they listed). Some guests also have a "linkedin" field: their LinkedIn
+profile as JSON, shared with their consent. Use it as facts about them (roles, companies, skills). Decide who is worth
+meeting for THIS job seeker.
 
 For every guest, return:
 - score: 0-100. High = likely to help this person toward their goal (hiring managers, founders hiring,
@@ -18,7 +20,7 @@ Be honest when a profile is thin. Do not guess anyone's gender, age, nationality
 
 export function rankUserPrompt(
   profile: { goal: string; background: string },
-  guests: { id: string; name: string; bio?: string; links: string[] }[],
+  guests: { id: string; name: string; bio?: string; links: string[]; linkedin?: string }[],
 ): string {
   return [
     `<job_seeker>\nGoal: ${profile.goal}\nBackground: ${profile.background}\n</job_seeker>`,

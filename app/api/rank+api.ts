@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { RANK_SYSTEM_PROMPT, rankUserPrompt } from "../../prompts/rank";
+import { readTeamEvent } from "../../src/server/teamEvent";
 import type { Guest, Profile } from "../../src/types";
 
 // Runs on the Expo dev/server, never on the phone, so the API key stays in .env.
@@ -40,11 +41,14 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // Only the public profile fields Claude needs; nothing is stored.
+  // Teammates in the demo event also get their (consented) LinkedIn profile, kept server-side.
+  const linkedin = (await readTeamEvent())?.linkedin ?? {};
   const slim = guests.slice(0, MAX_GUESTS).map((g) => ({
     id: g.id,
     name: g.name,
     bio: g.bio,
     links: Object.keys(g.links ?? {}),
+    ...(linkedin[g.id] ? { linkedin: linkedin[g.id] } : {}),
   }));
 
   try {

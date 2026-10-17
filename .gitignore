@@ -15,3 +15,6 @@ expo-env.d.ts
 /ios
 /android
 *.tsbuildinfo
+
+# Real teammates' data for the demo event (written by npm run enrich). Never commit.
+data/team-event.json

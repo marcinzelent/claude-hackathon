@@ -34,6 +34,7 @@ export type Profile = {
   goal: string; // e.g. "Land my first job as an ML engineer"
   background: string; // e.g. "Bootcamp grad, 3 years as a data analyst"
   city?: string; // for event suggestions, e.g. "Berlin"
+  linkedinUrl?: string; // your own profile, so you're not ranked against yourself
 };
 
 export type Match = {
