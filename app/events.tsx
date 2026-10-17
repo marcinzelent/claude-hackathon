@@ -129,10 +129,9 @@ export default function Events() {
     go("Pasted guest list", guests);
   };
 
-  // Our event is pinned first; the rest follow by date, without repeating it.
-  const others = mergeEvents(myEvents, linked).filter((e) => e.id !== featured.id);
-  const events = [featured, ...others];
-  const mine = new Set(events.map((e) => e.id));
+  // Our event is pinned to the top of "Picked for you", so it's left out of every other list.
+  const events = mergeEvents(myEvents, linked).filter((e) => e.id !== featured.id);
+  const mine = new Set([featured.id, ...events.map((e) => e.id)]);
   const byId = new Map((discovery?.events ?? []).map((e) => [e.id, e]));
   const picks = (discovery?.picks ?? [])
     .filter((p) => !mine.has(p.id) && byId.has(p.id))
@@ -166,7 +165,7 @@ export default function Events() {
       {lumaState === "unavailable" && (
         <Text style={styles.hint}>Your own Luma events show up in the phone app. On web, add an event by link.</Text>
       )}
-      {lumaState === "ready" && others.length === 0 && (
+      {lumaState === "ready" && events.length === 0 && (
         <Text style={styles.hint}>No upcoming events on your Luma account. Add one by link below.</Text>
       )}
 
@@ -176,6 +175,7 @@ export default function Events() {
       {status && <Text style={styles.hint}>{status}</Text>}
 
       <Label>Picked for you in {discovery?.city || city}</Label>
+      <EventCard event={featured} loading={openingId === featured.id} onPress={() => openEvent(featured)} />
       {!discovery && !discoverError && (
         <View style={styles.row}>
           <ActivityIndicator color={colors.accent} />
