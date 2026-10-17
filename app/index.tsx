@@ -1,6 +1,15 @@
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import sampleGuests from "../data/sample-guests.json";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { parseEventLink, parsePastedGuests } from "../src/luma/normalize";
@@ -11,7 +20,7 @@ import { Button, Label, colors } from "../src/ui";
 export default function Home() {
   const router = useRouter();
   const luma = useLuma();
-  const { profile, setProfile, setGuests } = useStore();
+  const { profile, setProfile, setGuests, connectSkipped } = useStore();
   const [eventInput, setEventInput] = useState("");
   const [pasteOpen, setPasteOpen] = useState(!luma.available);
   const [pasted, setPasted] = useState("");
@@ -20,6 +29,17 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const needsGoal = !profile.goal.trim();
+
+  // Connect Luma first, unless the user chose to carry on without it.
+  if (luma.status === "checking" && !connectSkipped) {
+    return (
+      <View style={styles.checking}>
+        <ActivityIndicator color={colors.accent} />
+        <Text style={styles.status}>Checking your Luma connection…</Text>
+      </View>
+    );
+  }
+  if (luma.status !== "connected" && !connectSkipped) return <Redirect href="/connect" />;
 
   const go = (eventName: string, guests: Guest[]) => {
     setGuests(eventName, guests);
@@ -149,6 +169,7 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 70, textAlignVertical: "top" },
   paste: { minHeight: 140, textAlignVertical: "top" },
   status: { marginTop: 8, color: colors.muted, textAlign: "center" },
+  checking: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   hint: { marginTop: 10, color: colors.muted, fontSize: 13, lineHeight: 18 },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
 });

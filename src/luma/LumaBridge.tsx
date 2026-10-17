@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { createLumaClient, LumaError, type LumaClient, type LumaResponse, type LumaTransport } from "./client";
@@ -16,10 +16,20 @@ export { LumaError } from "./client";
 
 type Pending = { resolve: (r: LumaResponse) => void; reject: (e: Error) => void };
 
+/**
+ * checking: asking Luma whether the user is signed in
+ * connected / signed-out: the answer
+ * offline: Luma couldn't be reached, so we don't know
+ * unavailable: web, where signing in to Luma isn't possible
+ */
+export type LumaStatus = "checking" | "connected" | "signed-out" | "offline" | "unavailable";
+
 type LumaApi = LumaClient & {
   /** True where the user can sign in to Luma (the phone app, not web). */
   available: boolean;
-  reload: () => void;
+  status: LumaStatus;
+  /** Reloads the hidden WebView (to pick up a fresh sign-in) and asks Luma again. */
+  refresh: () => Promise<LumaStatus>;
 };
 
 const LumaContext = createContext<LumaApi | null>(null);
@@ -43,10 +53,12 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   const markReady = useRef<() => void>(() => {});
   const [webviewKey, setWebviewKey] = useState(0);
   const available = Platform.OS !== "web";
+  const [status, setStatus] = useState<LumaStatus>(available ? "checking" : "unavailable");
 
-  if (!ready.current) {
+  const resetReady = () => {
     ready.current = new Promise((resolve) => (markReady.current = resolve));
-  }
+  };
+  if (!ready.current) resetReady();
 
   const webviewTransport = useCallback<LumaTransport>(async (url) => {
     await ready.current;
@@ -71,18 +83,44 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const api = useMemo<LumaApi>(() => {
-    const client = createLumaClient(available ? webviewTransport : webTransport);
-    return {
+  const client = useMemo(
+    () => createLumaClient(available ? webviewTransport : webTransport),
+    [available, webviewTransport],
+  );
+
+  const check = useCallback(async (): Promise<LumaStatus> => {
+    if (!available) return "unavailable";
+    setStatus("checking");
+    let next: LumaStatus;
+    try {
+      next = (await client.isSignedIn()) ? "connected" : "signed-out";
+    } catch {
+      next = "offline";
+    }
+    setStatus(next);
+    return next;
+  }, [available, client]);
+
+  // Ask Luma once on startup.
+  useEffect(() => {
+    check();
+  }, [check]);
+
+  const api = useMemo<LumaApi>(
+    () => ({
       ...client,
       available,
+      status,
       isSignedIn: async () => (available ? client.isSignedIn() : false),
-      reload: () => {
-        ready.current = null;
+      refresh: () => {
+        if (!available) return check();
+        resetReady();
         setWebviewKey((k) => k + 1);
+        return check();
       },
-    };
-  }, [available, webviewTransport]);
+    }),
+    [available, client, status, check],
+  );
 
   const onMessage = (event: WebViewMessageEvent) => {
     let msg: { id?: string; status?: number; body?: string; error?: string };

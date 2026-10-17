@@ -13,6 +13,9 @@ type Store = {
   setGuests: (eventName: string, guests: Guest[]) => void;
   matches: Match[] | null;
   setMatches: (m: Match[] | null) => void;
+  // The user chose "continue without Luma" on the connect screen (this app session only).
+  connectSkipped: boolean;
+  setConnectSkipped: (skipped: boolean) => void;
 };
 
 const PROFILE_KEY = "roomradar.profile";
@@ -29,6 +32,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [eventName, setEventName] = useState("");
   const [guests, setGuestsState] = useState<Guest[]>([]);
   const [matches, setMatches] = useState<Match[] | null>(null);
+  const [connectSkipped, setConnectSkipped] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
@@ -48,7 +52,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <StoreContext.Provider value={{ profile, setProfile, eventName, guests, setGuests, matches, setMatches }}>
+    <StoreContext.Provider
+      value={{ profile, setProfile, eventName, guests, setGuests, matches, setMatches, connectSkipped, setConnectSkipped }}
+    >
       {children}
     </StoreContext.Provider>
   );

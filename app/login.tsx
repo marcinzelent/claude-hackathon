@@ -1,19 +1,38 @@
 import { Stack, useRouter } from "expo-router";
-import { Pressable, Text, View } from "react-native";
-import { WebView } from "react-native-webview";
+import { useRef, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { WebView, type WebViewNavigation } from "react-native-webview";
 import { LUMA_SIGNIN_URL } from "../src/luma/config";
 import { useLuma } from "../src/luma/LumaBridge";
 import { colors } from "../src/ui";
+
+type Phase = "signing-in" | "checking" | "connected" | "not-yet";
 
 // Luma's own sign-in page. Luma sets its cookies inside the WebView;
 // the app never sees the email code or the session.
 export default function Login() {
   const router = useRouter();
   const luma = useLuma();
+  const [phase, setPhase] = useState<Phase>("signing-in");
+  const checking = useRef(false);
 
-  const done = () => {
-    luma.reload(); // hidden bridge picks up the fresh session
-    router.back();
+  const confirm = async () => {
+    if (checking.current) return;
+    checking.current = true;
+    setPhase("checking");
+    const status = await luma.refresh(); // hidden bridge picks up the fresh session
+    checking.current = false;
+    if (status === "connected") {
+      setPhase("connected");
+      setTimeout(() => router.dismissTo("/"), 900);
+    } else {
+      setPhase("not-yet");
+    }
+  };
+
+  // Luma leaves its sign-in page once you're in, so check then without waiting for "Done".
+  const onNavigation = (nav: WebViewNavigation) => {
+    if (!nav.loading && phase !== "connected" && !/\/signin/.test(nav.url) && /luma\.com/.test(nav.url)) confirm();
   };
 
   return (
@@ -21,16 +40,28 @@ export default function Login() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable onPress={done} hitSlop={12}>
+            <Pressable onPress={confirm} hitSlop={12}>
               <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "600" }}>Done</Text>
             </Pressable>
           ),
         }}
       />
-      <Text style={{ padding: 12, color: colors.muted }}>
-        Sign in with the account you registered for the event with, then tap Done and try again.
-      </Text>
-      <WebView source={{ uri: LUMA_SIGNIN_URL }} sharedCookiesEnabled thirdPartyCookiesEnabled style={{ flex: 1 }} />
+      <View style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {phase === "checking" && <ActivityIndicator color={colors.accent} />}
+        <Text style={{ flex: 1, color: phase === "not-yet" ? colors.error : phase === "connected" ? colors.good : colors.muted }}>
+          {phase === "signing-in" && "Sign in with the account you registered for your events with."}
+          {phase === "checking" && "Checking your Luma sign-in…"}
+          {phase === "connected" && "✓ Luma is connected."}
+          {phase === "not-yet" && "You're not signed in yet. Finish signing in below, then tap Done."}
+        </Text>
+      </View>
+      <WebView
+        source={{ uri: LUMA_SIGNIN_URL }}
+        sharedCookiesEnabled
+        thirdPartyCookiesEnabled
+        onNavigationStateChange={onNavigation}
+        style={{ flex: 1 }}
+      />
     </View>
   );
 }
