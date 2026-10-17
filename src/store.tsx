@@ -6,6 +6,8 @@ import type { Guest, Match, Profile } from "./types";
 // Only the user's own profile is saved on the device.
 
 type Store = {
+  /** True once the saved profile has been read from the device. */
+  ready: boolean;
   profile: Profile;
   setProfile: (p: Profile) => void;
   eventName: string;
@@ -25,6 +27,7 @@ export function useStore(): Store {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
   const [profile, setProfileState] = useState<Profile>({ goal: "", background: "" });
   const [eventName, setEventName] = useState("");
   const [guests, setGuestsState] = useState<Guest[]>([]);
@@ -33,7 +36,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
       .then((raw) => raw && setProfileState(JSON.parse(raw)))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setReady(true));
   }, []);
 
   const setProfile = (p: Profile) => {
@@ -48,7 +52,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <StoreContext.Provider value={{ profile, setProfile, eventName, guests, setGuests, matches, setMatches }}>
+    <StoreContext.Provider value={{ ready, profile, setProfile, eventName, guests, setGuests, matches, setMatches }}>
       {children}
     </StoreContext.Provider>
   );

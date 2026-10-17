@@ -15,6 +15,15 @@ export type Guest = {
   links: GuestLinks;
 };
 
+export type LumaEvent = {
+  id: string; // "evt-..."
+  slug: string; // luma.com/<slug>
+  name: string;
+  startAt?: string; // ISO date
+  coverUrl?: string;
+  guestCount?: number;
+};
+
 export type Profile = {
   goal: string; // e.g. "Land my first job as an ML engineer"
   background: string; // e.g. "Bootcamp grad, 3 years as a data analyst"

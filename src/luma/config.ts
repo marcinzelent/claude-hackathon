@@ -14,7 +14,11 @@ export const lumaPaths = {
     `/event/get-guest-list?event_api_id=${encodeURIComponent(eventApiId)}` +
     `&pagination_limit=100` +
     (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : ""),
-  self: () => `/user/get-self`,
+  // The signed-in user's own events (attending and hosting). Answers 401 when signed out,
+  // so it doubles as the sign-in check. (/user/get-self answered 404 when probed.)
+  myEvents: (period: "future" | "past", cursor?: string) =>
+    `/home/get-events?period=${period}&pagination_limit=50` +
+    (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : ""),
 };
 
 export const MAX_GUEST_PAGES = 20;

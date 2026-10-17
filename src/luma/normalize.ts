@@ -1,4 +1,4 @@
-import type { Guest, GuestLinks } from "../types";
+import type { Guest, GuestLinks, LumaEvent } from "../types";
 
 type Json = Record<string, unknown>;
 
@@ -85,6 +85,46 @@ export function parseGuestPage(payload: unknown): { guests: Guest[]; nextCursor?
   const guests = list.map(normalizeGuest).filter((g): g is Guest => g !== null);
   const nextCursor = payload.has_more ? str(payload.next_cursor) : undefined;
   return { guests, nextCursor };
+}
+
+/** Converts an event object (or a wrapper holding one under `event`) into a LumaEvent. */
+export function normalizeEvent(entry: unknown, guestCount?: unknown): LumaEvent | null {
+  if (!isObj(entry)) return null;
+  const e = isObj(entry.event) ? entry.event : entry;
+  const id = str(e.api_id);
+  const name = str(e.name);
+  if (!id?.startsWith("evt-") || !name) return null;
+  const count = typeof guestCount === "number" ? guestCount : entry.guest_count;
+  return {
+    id,
+    slug: str(e.url) ?? id,
+    name,
+    startAt: str(e.start_at),
+    coverUrl: str(e.cover_url),
+    guestCount: typeof count === "number" ? count : undefined,
+  };
+}
+
+/** Reads one page of the signed-in user's events (/home/get-events). */
+export function parseEventPage(payload: unknown): { events: LumaEvent[]; nextCursor?: string } {
+  if (!isObj(payload)) return { events: [] };
+  const list = Array.isArray(payload.entries) ? payload.entries : Array.isArray(payload.events) ? payload.events : [];
+  const events = list.map((entry) => normalizeEvent(entry)).filter((e): e is LumaEvent => e !== null);
+  const nextCursor = payload.has_more ? str(payload.next_cursor) : undefined;
+  return { events, nextCursor };
+}
+
+/** Reads the public /url?url=<slug> response for one event. */
+export function parseEventLookup(payload: unknown): LumaEvent | null {
+  if (!isObj(payload) || payload.kind !== "event" || !isObj(payload.data)) return null;
+  return normalizeEvent(payload.data, payload.data.guest_count);
+}
+
+/** Merges event lists, dropping duplicates and sorting by start time (soonest first). */
+export function mergeEvents(...lists: LumaEvent[][]): LumaEvent[] {
+  const byId = new Map<string, LumaEvent>();
+  for (const e of lists.flat()) byId.set(e.id, { ...byId.get(e.id), ...e });
+  return [...byId.values()].sort((a, b) => (a.startAt ?? "").localeCompare(b.startAt ?? ""));
 }
 
 /**

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   findEventApiId,
+  mergeEvents,
+  normalizeEvent,
   normalizeGuest,
+  parseEventLookup,
+  parseEventPage,
   parseEventSlug,
   parseGuestPage,
   parsePastedGuests,
@@ -80,5 +84,39 @@ describe("parsePastedGuests", () => {
     const jsonl = toJsonl([{ user: { api_id: "u1", name: "A" } }, { user: { api_id: "u2", name: "B" } }]);
     expect(parsePastedGuests(jsonl)).toHaveLength(2);
     expect(parsePastedGuests(JSON.stringify({ entries: [{ user: { api_id: "u1", name: "A" } }] }))).toHaveLength(1);
+  });
+});
+
+describe("events", () => {
+  const evt = { api_id: "evt-T3Uts4RWMmuJtgU", name: "Event Wingman Presentation", url: "noyhvgai", start_at: "2026-10-17T18:00:00.000Z", cover_url: "https://images.lumacdn.com/x" };
+
+  it("reads the public /url lookup (shape probed from api2.luma.com)", () => {
+    const payload = { kind: "event", data: { api_id: evt.api_id, event: evt, guest_count: 0 } };
+    expect(parseEventLookup(payload)).toEqual({
+      id: "evt-T3Uts4RWMmuJtgU",
+      slug: "noyhvgai",
+      name: "Event Wingman Presentation",
+      startAt: "2026-10-17T18:00:00.000Z",
+      coverUrl: "https://images.lumacdn.com/x",
+      guestCount: 0,
+    });
+    expect(parseEventLookup({ kind: "calendar", data: {} })).toBeNull();
+  });
+
+  it("reads a page of your events, wrapped or flat", () => {
+    const page = { entries: [{ api_id: "x", event: evt, guest_count: 3 }, { event: { api_id: "cal-1", name: "Not an event" } }], has_more: true, next_cursor: "c" };
+    const { events, nextCursor } = parseEventPage(page);
+    expect(events.map((e) => [e.id, e.guestCount])).toEqual([["evt-T3Uts4RWMmuJtgU", 3]]);
+    expect(nextCursor).toBe("c");
+    expect(normalizeEvent(evt)?.slug).toBe("noyhvgai");
+  });
+
+  it("merges without duplicates, soonest first", () => {
+    const a = { id: "evt-a", slug: "a", name: "A", startAt: "2026-10-18T10:00:00Z" };
+    const b = { id: "evt-b", slug: "b", name: "B", startAt: "2026-10-17T10:00:00Z" };
+    expect(mergeEvents([a], [b, { ...a, guestCount: 5 }]).map((e) => [e.id, e.guestCount])).toEqual([
+      ["evt-b", undefined],
+      ["evt-a", 5],
+    ]);
   });
 });

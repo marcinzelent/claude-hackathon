@@ -4,7 +4,7 @@ import type { Guest, Match, Profile } from "../types";
 
 // On web the API route is same-origin. On a phone (Expo Go) it lives on the
 // dev server that served the app, unless EXPO_PUBLIC_API_URL says otherwise.
-function apiBase(): string {
+export function apiBase(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
   if (Platform.OS === "web") return "";
   const host = Constants.expoConfig?.hostUri;

@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState, type
 import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { LUMA_API_BASES, LUMA_WEB_ORIGIN, MAX_GUEST_PAGES, lumaPaths } from "./config";
-import { findEventApiId, parseGuestPage } from "./normalize";
-import type { Guest } from "../types";
+import { findEventApiId, mergeEvents, parseEventPage, parseGuestPage } from "./normalize";
+import type { Guest, LumaEvent } from "../types";
 
 /*
  * The trick that keeps the user's Luma session on their phone:
@@ -18,7 +18,9 @@ type Pending = { resolve: (r: BridgeResponse) => void; reject: (e: Error) => voi
 type LumaApi = {
   available: boolean;
   isSignedIn: () => Promise<boolean>;
-  fetchGuests: (slug: string, onProgress?: (count: number) => void) => Promise<Guest[]>;
+  fetchMyEvents: () => Promise<LumaEvent[]>;
+  /** Accepts an event slug or an "evt-..." id. */
+  fetchGuests: (slugOrId: string, onProgress?: (count: number) => void) => Promise<Guest[]>;
   reload: () => void;
 };
 
@@ -40,9 +42,10 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   const [webviewKey, setWebviewKey] = useState(0);
   const available = Platform.OS !== "web";
 
-  if (!ready.current) {
+  const resetReady = () => {
     ready.current = new Promise((resolve) => (markReady.current = resolve));
-  }
+  };
+  if (!ready.current) resetReady();
 
   const request = useCallback(async (url: string): Promise<BridgeResponse> => {
     await ready.current;
@@ -91,21 +94,32 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
     () => ({
       available,
       reload: () => {
-        ready.current = null;
+        // New promise before the remount, so requests wait for the fresh page instead of the old one.
+        resetReady();
         setWebviewKey((k) => k + 1);
       },
       isSignedIn: async () => {
         if (!available) return false;
         try {
-          await getJson(lumaPaths.self());
+          await getJson(lumaPaths.myEvents("future"));
           return true;
         } catch {
           return false;
         }
       },
-      fetchGuests: async (slug, onProgress) => {
+      fetchMyEvents: async () => {
+        if (!available) throw new LumaError("Your Luma events only load in the mobile app.");
+        const { events: upcoming } = parseEventPage(await getJson(lumaPaths.myEvents("future")));
+        // Today's events can already count as "past" once they've started, so include recent ones.
+        const { events: past } = parseEventPage(await getJson(lumaPaths.myEvents("past")));
+        const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+        return mergeEvents(upcoming, past.filter((e) => (e.startAt ?? "") >= dayAgo));
+      },
+      fetchGuests: async (slugOrId, onProgress) => {
         if (!available) throw new LumaError("Live Luma loading only works in the mobile app.");
-        const eventId = findEventApiId(await getJson(lumaPaths.resolveSlug(slug)));
+        const eventId = slugOrId.startsWith("evt-")
+          ? slugOrId
+          : findEventApiId(await getJson(lumaPaths.resolveSlug(slugOrId)));
         if (!eventId) throw new LumaError("Could not find that event on Luma.");
 
         const guests: Guest[] = [];
