@@ -3,7 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { CV_IMPORT_SYSTEM_PROMPT } from "../../prompts/cvImport";
 import { MINUTE, cacheKey, serverCache } from "./cache";
-import { MISSING_KEY, claudeClient, claudeFailure, fail } from "./claude";
+import { MISSING_KEY, MODEL, claudeClient, claudeFailure, fail } from "./claude";
 
 // Server-only: shared by /api/profile (CV PDF) and /api/linkedin (LinkedIn profile data).
 
@@ -39,10 +39,8 @@ export async function profileFromClaude(
 /** Claude's answer, or null when it refused or returned nothing usable. */
 async function askClaude(client: Anthropic, content: Anthropic.Beta.BetaContentBlockParam[]): Promise<ImportedProfile | null> {
   const response = await client.beta.messages.parse({
-    model: "claude-opus-5-5",
+    model: MODEL,
     max_tokens: 4000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
     output_config: { effort: "low", format: zodOutputFormat(ProfileSchema) },
     system: CV_IMPORT_SYSTEM_PROMPT,
     messages: [{ role: "user", content }],

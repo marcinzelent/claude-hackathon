@@ -3,7 +3,7 @@ import { z } from "zod";
 import { EVENTS_SYSTEM_PROMPT, eventsUserPrompt } from "../../prompts/events";
 import { citySlug } from "../../src/luma/normalize";
 import { MINUTE, cacheKey, serverCache } from "../../src/server/cache";
-import { MISSING_KEY, claudeClient, claudeFailure, fail } from "../../src/server/claude";
+import { MISSING_KEY, MODEL, claudeClient, claudeFailure, fail } from "../../src/server/claude";
 import { cityEvents } from "../../src/server/luma";
 import type { EventPick, Profile } from "../../src/types";
 
@@ -37,10 +37,8 @@ export async function POST(request: Request): Promise<Response> {
   const key = cacheKey(slug, profile.goal.trim(), profile.background.trim());
   const ask = async (): Promise<EventPick[] | null> => {
     const response = await client.beta.messages.parse({
-      model: "claude-opus-5-5",
+      model: MODEL,
       max_tokens: 4000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       output_config: { effort: "low", format: zodOutputFormat(PicksSchema) },
       system: EVENTS_SYSTEM_PROMPT,
       messages: [{ role: "user", content: eventsUserPrompt(profile, slim) }],

@@ -18,7 +18,7 @@
 4. You can export the ranked list as JSONL.
 
 ## How Claude is used
-- **Model:** `claude-opus-5-5` through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Server-side refusal fallbacks are switched on (`fallbacks: "default"`).
+- **Model:** `claude-haiku-5-5` (set once in `src/server/claude.ts`) through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Haiku is fast and cheap, which suits a live demo.
 - **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
 - **Event suggestions** (`app/api/discover+api.ts`, prompt in `prompts/events.ts`): Claude reads the names and hosts of your city's public Luma events and picks up to 8 that fit your goal.
 - **CV import** (`app/api/profile+api.ts`, prompt in `prompts/cvImport.ts`): Claude reads the uploaded PDF and suggests your target role and a short background, leaving out contact details. The PDF isn't stored.

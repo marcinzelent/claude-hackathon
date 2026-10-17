@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { RANK_SYSTEM_PROMPT, rankUserPrompt } from "../../prompts/rank";
 import { MINUTE, cacheKey, serverCache } from "../../src/server/cache";
+import { MODEL } from "../../src/server/claude";
 import { readTeamEvent } from "../../src/server/teamEvent";
 import type { Guest, Match, Profile } from "../../src/types";
 
@@ -57,10 +58,8 @@ export async function POST(request: Request): Promise<Response> {
 
   const ask = async (anthropic: Anthropic): Promise<Match[] | null> => {
     const response = await anthropic.beta.messages.parse({
-      model: "claude-opus-5-5",
+      model: MODEL,
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       output_config: { effort: "medium", format: zodOutputFormat(MatchesSchema) },
       system: RANK_SYSTEM_PROMPT,
       messages: [{ role: "user", content: rankUserPrompt(profile, slim) }],

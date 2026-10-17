@@ -2,6 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 
 // Server-only: one Anthropic client and the error answers every Claude route shares.
 
+/** The model every Claude route uses. Haiku has no server-side refusal fallback, so routes don't send `fallbacks`. */
+export const MODEL = "claude-haiku-5-5";
+
 let client: Anthropic | null = null;
 
 export const fail = (status: number, error: string) => Response.json({ error }, { status });
