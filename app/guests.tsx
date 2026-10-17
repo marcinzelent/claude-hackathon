@@ -1,8 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { exportJson } from "../src/export";
-import { toGuestJson } from "../src/luma/normalize";
 import { useStore } from "../src/store";
 import type { GuestLinks } from "../src/types";
 import { Button, colors } from "../src/ui";
@@ -16,23 +13,11 @@ const LINK_LABELS: Record<keyof GuestLinks, string> = {
   website: "Website",
 };
 
-// The import result: every guest with their connected profiles, as JSON.
+// The import result: every guest with their connected profiles. A test screen; on main the list goes straight to ranking.
 export default function Guests() {
   const router = useRouter();
   const { eventName, guests, profile } = useStore();
-  const [note, setNote] = useState<string | null>(null);
-  const [showJson, setShowJson] = useState(false);
-  const json = useMemo(() => toGuestJson(guests), [guests]);
   const withProfiles = guests.filter((g) => Object.keys(g.links).length > 0).length;
-
-  const onExport = async (mode: "copy" | "download") => {
-    setNote(null);
-    try {
-      setNote(await exportJson(json, mode));
-    } catch {
-      setNote("Couldn't export the guest list. Please try again.");
-    }
-  };
 
   if (guests.length === 0) {
     return <Text style={styles.center}>No guests loaded yet. Go back and import an event.</Text>;
@@ -44,20 +29,6 @@ export default function Guests() {
       <Text style={styles.meta}>
         {guests.length} guests · {withProfiles} with connected profiles
       </Text>
-
-      <Button title="Copy JSON" onPress={() => onExport("copy")} />
-      <Button title="Download guests.json" variant="secondary" onPress={() => onExport("download")} />
-      {note && <Text style={styles.note}>{note}</Text>}
-      <Button
-        title={showJson ? "Hide JSON" : "Show JSON"}
-        variant="secondary"
-        onPress={() => setShowJson((s) => !s)}
-      />
-      {showJson && (
-        <Text style={styles.json} selectable>
-          {json}
-        </Text>
-      )}
 
       <View style={{ marginTop: 16 }}>
         {guests.map((g) => (
@@ -101,17 +72,6 @@ const styles = StyleSheet.create({
   event: { fontSize: 22, fontWeight: "700", color: colors.text },
   meta: { color: colors.muted, marginTop: 4, marginBottom: 4 },
   note: { color: colors.muted, marginTop: 8, textAlign: "center" },
-  json: {
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    fontFamily: "monospace",
-    fontSize: 12,
-    color: colors.text,
-  },
   card: {
     backgroundColor: colors.card,
     borderRadius: 14,

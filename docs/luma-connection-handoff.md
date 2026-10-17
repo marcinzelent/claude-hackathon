@@ -19,7 +19,7 @@ All Luma logic is behind one client (`src/luma/client.ts`). On the phone and the
 Errors come back as `LumaError` with a `kind` (`invalid-link`, `not-signed-in`, `not-found`, `hidden`, `unreachable`) and a plain-language `message` you can show as is.
 
 ## What you get (the contract)
-`Guest` from `src/types.ts`; `toGuestJson()` in `src/luma/normalize.ts` turns a list into this JSON:
+A list of `Guest` objects from `src/types.ts`, in memory (no file, no export). One guest looks like this:
 
 ```json
 [
@@ -56,7 +56,14 @@ So the import screen on this branch isn't needed on `main`; the guest list goes 
 What `main` doesn't have yet, and this branch adds:
 - **Guest lists on the web:** `main` tells web users to use the phone app. This branch's ticket-link relay (`app/api/luma+api.ts`, `src/luma/proxy.ts`) lets `fetchGuests` take a `?tk=` link on the web too.
 - **All connected socials:** TikTok and YouTube on top of LinkedIn, X, Instagram and website.
-- **Guest list as JSON:** `toGuestJson()` plus copy and download.
+
+## Gaps to close so it plugs into `main` seamlessly
+1. **Types:** `main`'s `GuestLinks` has no `tiktok`/`youtube`; add them (and their labels in `app/results.tsx`). `main`'s `LumaEvent` uses `id`, this branch uses `apiId`; keep `main`'s. The ranking route sends `Object.keys(links)`, so new link types reach Claude without other changes.
+2. **Web entry point for the ticket link:** `main`'s event page calls `luma.fetchGuests(event.id)`, and its bridge refuses on the web. Port this branch's web transport and relay, and give the event page a ticket-link field on the web (Luma only gives guests a `?tk=` link, so the app can't know it).
+3. **LinkedIn for guests who didn't connect it:** not built anywhere. Many guests have a full name on Luma but no LinkedIn link. Finding it needs a web search step between the import and the ranking. The ranking route already accepts extra LinkedIn data per guest id (`linkedin[g.id]`, today only for the team event), so that's where the result would go. Open questions before building it:
+   - **Wrong person:** a name search can match a different person with the same name. Only accept a match the search can back up (same company or city from the Luma bio, same photo), and show it as "possible match".
+   - **Consent:** `main` deliberately never looks up other guests on LinkedIn (`app/api/linkedin+api.ts`). Looking up strangers who only shared their name is a privacy call for the team, and under GDPR in Berlin. The event rules also say to use no real personal data in the demo.
+   - **Cost and speed:** one search per guest without LinkedIn; for 100 guests that's slow and paid. Cache per guest and cap the number.
 
 ## What to know before merging
 - **LinkedIn of other guests isn't scraped on `main`.** `app/api/linkedin+api.ts` only looks up the user's *own* profile. Other guests are ranked from their Luma name, bio and which links they listed. The only exception is our team event, where teammates agreed to have their LinkedIn fetched.

@@ -5,7 +5,7 @@
 ## The problem
 - **Audience:** job seekers trying to break into AI, for example career changers, bootcamp grads and junior engineers in Berlin.
 - **Their problem with AI today:** the AI industry hires through networks. Meetups are full of the right people, but newcomers don't know who's who, what to ask, or how to start the conversation.
-- **What the demo lets them do:** import the guest list of a Luma event they're registered for (with every guest's connected profiles, as JSON), and let Claude rank it for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
+- **What the demo lets them do:** import the guest list of a Luma event they're registered for (with every guest's connected profiles), and let Claude rank it for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
 
 ## What it does
 1. **Connect Luma** (phone app): on first launch you sign in on Luma's own page inside the app. On the web, or to skip, tap **Continue** / **Try the sample event**.
@@ -15,7 +15,7 @@
    - **Event link** (phone app, signed in): any Luma event link you're registered for.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
-3. **Guest list:** every guest with their connected profiles (LinkedIn, X, Instagram, TikTok, YouTube, website, Luma), as a JSON array you can copy or download as `guests.json`.
+3. **Guest list:** every guest with their connected profiles (LinkedIn, X, Instagram, TikTok, YouTube, website, Luma).
 4. **Optional: Rank with Claude.** Type the job you want and a line about your background, and Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener) and *learn from them*.
 5. **Disconnect Luma** at the bottom of home signs you out of Luma inside the app.
 
@@ -49,14 +49,14 @@ npx expo start          # press w for web, or scan the QR code with Expo Go on y
 
 Paste mode always works as a fallback. The full design is in [docs/specs/luma-connection.md](docs/specs/luma-connection.md).
 
-**The import is a background step.** The "Import guest list" button and the Guest list screen are test and demo screens. On `main` the guest list goes straight from the event's "Find who to meet" button to the People screen, where Claude ranks it. How to call the Luma connection and the JSON it returns: [docs/luma-connection-handoff.md](docs/luma-connection-handoff.md).
+**The import is a background step.** The "Import guest list" button and the Guest list screen are test and demo screens. On `main` the guest list goes straight from the event's "Find who to meet" button to the People screen, where Claude ranks it. How to call the Luma connection and what it returns: [docs/luma-connection-handoff.md](docs/luma-connection-handoff.md).
 
 ## Project layout
 | Path | What it is |
 |---|---|
 | `app/connect.tsx` | First screen: connect Luma or try the sample event |
 | `app/index.tsx` | Home screen: your goal, your Luma events, event link, sample and paste options, disconnect |
-| `app/guests.tsx` | Imported guest list: profiles, copy/download JSON, optional ranking |
+| `app/guests.tsx` | Imported guest list with profiles (test screen), optional ranking |
 | `app/results.tsx` | Ranked guest cards and JSON export |
 | `app/api/luma+api.ts` | Narrow relay to Luma for the web version (ticket links only) |
 | `app/login.tsx` | Luma sign-in (and manual sign-out) inside the app |
