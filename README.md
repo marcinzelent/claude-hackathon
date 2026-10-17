@@ -1,16 +1,16 @@
 # RoomRadar
 
-**One line:** Helps job seekers who want to work in AI find out who to talk to at an AI meetup, why, and what to ask them.
+**One line:** Helps people who want to get into AI find out who to talk to at an AI meetup, why, and what to ask them.
 
 ## The problem
-- **Audience:** job seekers trying to break into AI, for example career changers, bootcamp grads and junior engineers in Berlin.
-- **Their problem with AI today:** the AI industry hires through networks. Meetups are full of the right people, but newcomers don't know who's who, what to ask, or how to start the conversation.
-- **What the demo lets them do:** paste a Luma event link, and Claude ranks the guest list for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
+- **Audience:** people in Berlin who want to get into AI but don't know anyone working in it: career changers and junior engineers looking for a job, but also small business owners and workers in non-tech jobs who want to use AI in their work.
+- **Their problem with AI today:** most of what you learn about AI, and most AI jobs, comes through people. Meetups are full of the right people, but newcomers don't know who's who, what to ask, or how to start the conversation, and the jargon makes it worse.
+- **What the demo lets them do:** paste a Luma event link, and Claude ranks the guest list for *their* goal (a job, a project, or using AI at work). For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
 
 ## What it does
-1. You paste your own LinkedIn link (fetched once through Apify) or upload your CV / LinkedIn PDF, and Claude fills in the job you should look for and your background. You can also type them.
+1. You paste your own LinkedIn link (fetched once through Apify) or upload your CV / LinkedIn PDF, and Claude fills in what you want from AI and your background. You can also type them.
 2. You pick an event:
-   - **Picked for you:** Claude reads the upcoming public Luma events in your city and suggests the ones that help with your job search, each with a short reason.
+   - **Picked for you:** Claude reads the upcoming public Luma events in your city and suggests the ones that fit your goal, each with a short reason.
    - **Your Luma events (mobile app):** sign in to Luma once inside the app to see the events you're going to, or add any event by its link.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
    - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.

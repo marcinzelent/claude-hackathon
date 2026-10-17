@@ -56,7 +56,7 @@ export default function Onboarding() {
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Walk into the room knowing who to talk to.</Text>
         <Text style={styles.subtitle}>
-          Going to an AI meetup to find your next job? Tell us what you're after. Claude reads the guest list and
+          Want to get into AI, for a new job, a project or your current work? Tell us what you're after. Claude reads the guest list and
           tells you who to meet, why, how to start the conversation, and what you can learn from them.
         </Text>
 
@@ -92,10 +92,10 @@ export default function Onboarding() {
         {importNote && <Text style={styles.note}>{importNote}</Text>}
         {error && <Text style={styles.error}>{error}</Text>}
 
-        <Label>What job are you looking for?</Label>
+        <Label>What do you want from AI?</Label>
         <TextInput
           style={styles.input}
-          placeholder="e.g. My first job as an ML engineer"
+          placeholder="e.g. Learn how to use AI in my bakery, or my first ML job"
           value={profile.goal}
           onChangeText={(goal) => setProfile({ ...profile, goal })}
         />
@@ -121,7 +121,7 @@ export default function Onboarding() {
           onPress={() => (router.canGoBack() ? router.back() : router.replace("/events"))}
           disabled={needsGoal}
         />
-        {needsGoal && <Text style={styles.hint}>Start by telling us what job you're looking for.</Text>}
+        {needsGoal && <Text style={styles.hint}>Start by telling us what you want from AI.</Text>}
         <Text style={styles.hint}>This stays on your device.</Text>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -1,13 +1,13 @@
-// Prompt for picking which public events are worth a job seeker's evening.
+// Prompt for picking which public events are worth this person's evening.
 
-export const EVENTS_SYSTEM_PROMPT = `You help job seekers who want to work in AI choose which networking events to go to.
+export const EVENTS_SYSTEM_PROMPT = `You help people who want to get into AI, for a job, a project or their own work, choose which networking events to go to.
 
-You get the job seeker's goal and background, plus a list of upcoming public events in their city
+You get the person's goal and background, plus a list of upcoming public events in their city
 (name, host calendar, date, number of guests). Pick the events most likely to help THIS person toward their goal:
-meeting people who hire, people doing the job they want, founders, communities in their target field,
-hackathons and talks where they can learn and be seen.
+meeting people who build or use AI in the area they care about, founders, communities in their field,
+hackathons and talks where they can learn, and, if they want a job, people who hire.
 
-Skip events that won't help with the job search (parties, sport, dating, wellness, unrelated hobbies),
+Skip events that won't help with that goal (parties, sport, dating, wellness, unrelated hobbies),
 however popular they are.
 
 For each pick, return:
@@ -23,7 +23,7 @@ export function eventsUserPrompt(
   events: { id: string; name: string; host?: string; date?: string; guests?: number }[],
 ): string {
   return [
-    `<job_seeker>\nGoal: ${profile.goal}\nBackground: ${profile.background}\n</job_seeker>`,
+    `<person>\nGoal: ${profile.goal}\nBackground: ${profile.background}\n</person>`,
     `<events>\n${JSON.stringify(events, null, 1)}\n</events>`,
   ].join("\n\n");
 }

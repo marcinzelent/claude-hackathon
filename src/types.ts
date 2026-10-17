@@ -30,11 +30,11 @@ export type LumaEvent = {
   description?: string; // plain text, only from the single-event lookup
 };
 
-/** Claude's pick of a public event for this job seeker. */
+/** Claude's pick of a public event for this person. */
 export type EventPick = { id: string; score: number; why: string };
 
 export type Profile = {
-  goal: string; // e.g. "Land my first job as an ML engineer"
+  goal: string; // e.g. "Learn how to use AI in my bakery" or "Land my first job as an ML engineer"
   background: string; // e.g. "Bootcamp grad, 3 years as a data analyst"
   city?: string; // for event suggestions, e.g. "Berlin"
   linkedinUrl?: string; // your own profile, so you're not ranked against yourself

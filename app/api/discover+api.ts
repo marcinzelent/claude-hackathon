@@ -8,7 +8,7 @@ import { cityEvents } from "../../src/server/luma";
 import type { EventPick, Profile } from "../../src/types";
 
 // POST { profile } -> { city, events, picks }: public Luma events in the user's city,
-// with Claude's picks for their job goal. No sign-in involved; answers stay in server memory for a few minutes.
+// with Claude's picks for their AI goal. No sign-in involved; answers stay in server memory for a few minutes.
 
 const MAX_PICKS = 8;
 

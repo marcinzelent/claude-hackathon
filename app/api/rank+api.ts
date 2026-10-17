@@ -75,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const anthropic = client;
-    const key = cacheKey(profile.goal.trim(), profile.background?.trim(), slim);
+    const key = cacheKey(RANK_SYSTEM_PROMPT, profile.goal.trim(), profile.background?.trim(), slim);
     const matches = await rankCache.get(key, () => ask(anthropic), (v) => v !== null);
     if (!matches) return Response.json({ error: "Claude could not rank this list. Try again." }, { status: 502 });
     return Response.json({ matches });
