@@ -1,5 +1,6 @@
 import { Composition, Series, getStaticFiles, staticFile } from "remotion";
 import { FPS, SCENES, TOTAL_SECONDS } from "./config";
+import { calculateFinalMetadata, RoomRadarFinal } from "./Final";
 import type { Clips } from "./Phone";
 import { HowClaude, Outro, Privacy } from "./scenes/Closing";
 import { Hook, Intro, Problem } from "./scenes/Opening";
@@ -45,21 +46,34 @@ function RoomRadar({ clips }: { clips: Clips }) {
 
 export function Root() {
   return (
-    <Composition
-      id="RoomRadar"
-      component={RoomRadar}
-      width={1920}
-      height={1080}
-      fps={FPS}
-      durationInFrames={Math.round(TOTAL_SECONDS * FPS)}
-      defaultProps={{ clips: { file: null, marks: null } as Clips }}
-      // Use the app recording from `npm run record` when it exists.
-      calculateMetadata={async () => {
-        const files = getStaticFiles().map((f) => f.name);
-        if (!files.includes(CLIP) || !files.includes(MARKS)) return {};
-        const marks = (await fetch(staticFile(MARKS)).then((r) => r.json())) as Clips["marks"];
-        return { props: { clips: { file: CLIP, marks } } };
-      }}
-    />
+    <>
+      <Composition
+        id="RoomRadar"
+        component={RoomRadar}
+        width={1920}
+        height={1080}
+        fps={FPS}
+        durationInFrames={Math.round(TOTAL_SECONDS * FPS)}
+        defaultProps={{ clips: { file: null, marks: null } as Clips }}
+        // Use the app recording from `npm run record` when it exists.
+        calculateMetadata={async () => {
+          const files = getStaticFiles().map((f) => f.name);
+          if (!files.includes(CLIP) || !files.includes(MARKS)) return {};
+          const marks = (await fetch(staticFile(MARKS)).then((r) => r.json())) as Clips["marks"];
+          return { props: { clips: { file: CLIP, marks } } };
+        }}
+      />
+      {/* The final cut: your own recording (out/RoomRadar_final.mp4) with music and sound effects. */}
+      <Composition
+        id="RoomRadarFinal"
+        component={RoomRadarFinal}
+        width={1920}
+        height={1080}
+        fps={FPS}
+        durationInFrames={FPS * 100}
+        defaultProps={{ demo: { file: null, width: 9, height: 19.5, seconds: 40, rate: 1 } }}
+        calculateMetadata={calculateFinalMetadata}
+      />
+    </>
   );
 }

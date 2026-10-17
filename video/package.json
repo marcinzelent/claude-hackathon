@@ -5,10 +5,13 @@
   "scripts": {
     "studio": "remotion studio",
     "record": "node record.mjs",
-    "render": "remotion render RoomRadar out/roomradar.mp4"
+    "render": "remotion render RoomRadar out/roomradar.mp4",
+    "sounds": "node make-sounds.mjs",
+    "final": "node prepare-final.mjs && remotion render RoomRadarFinal out/RoomRadar_cool.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.536",
+    "@remotion/media-parser": "4.0.536",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "remotion": "^4.0.536"
