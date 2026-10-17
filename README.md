@@ -19,7 +19,7 @@
 
 ## How Claude is used
 - **Model:** `claude-haiku-5-5` (set once in `src/server/claude.ts`) through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Haiku is fast and cheap, which suits a live demo.
-- **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
+- **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs. For the team demo event only, it also gets a compact version of each teammate's LinkedIn profile, so it can score them on their full experience.
 - **Event suggestions** (`app/api/discover+api.ts`, prompt in `prompts/events.ts`): Claude reads the names and hosts of your city's public Luma events and picks up to 8 that fit your goal.
 - **CV import** (`app/api/profile+api.ts`, prompt in `prompts/cvImport.ts`): Claude reads the uploaded PDF and suggests your target role and a short background, leaving out contact details. The PDF isn't stored.
 - **What Claude produces:** a score, a one-line reason, a conversation opener, a learning tip and up to 3 AI terms from their profile explained for a newcomer, for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
@@ -27,10 +27,10 @@
 
 ## Privacy by design
 - Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
-- LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn.
-- Guest data only lives in memory and is gone when you close the app. Nothing is saved to disk on a server: to avoid repeat calls to Claude, Luma and LinkedIn, the server keeps recent answers in memory for up to an hour (`src/server/cache.ts`) and forgets them on restart.
+- LinkedIn import only fetches **your own** profile, from the link you paste. The app never looks up other guests on LinkedIn. The one exception is the team demo event below: its guests are our own teammates, who agreed.
+- Guest data only lives in memory and is gone when you close the app. To avoid repeat calls to Claude, Luma and LinkedIn, the server keeps recent answers in memory for up to an hour (`src/server/cache.ts`) and forgets them on restart. The only thing saved to disk is the teammates' profiles for the team demo event (`data/team-event.json`, git-ignored). Raw LinkedIn data never leaves the server except to Claude.
 - It only shows guests that you could already see on Luma yourself.
-- The demo and video use **fake sample guests** (`data/sample-guests.json`), not real people.
+- The sample event uses **fake guests** (`data/sample-guests.json`). The only real people in the demo are our own teammates, who agreed.
 
 ## How to run it
 ```bash
@@ -61,22 +61,25 @@ Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in
 |---|---|
 | `app/onboarding.tsx` | First run: import your LinkedIn or CV, your goal, background and city |
 | `app/events.tsx` | Picked-for-you events, your Luma events, add by link, sample and paste options |
-| `app/results.tsx` | Ranked guest cards and JSONL export |
+| `app/event/[slug]/index.tsx` | One event's details: time, place, hosts, Claude's reason, description |
+| `app/event/[slug]/people.tsx`, `app/results.tsx` | Ranked guest cards, jargon popups and *Share my plan* |
 | `app/login.tsx` | Luma sign-in inside the app |
 | `app/api/rank+api.ts` | Server route that calls Claude to rank guests |
 | `app/api/profile+api.ts` | Server route where Claude reads your CV PDF |
 | `app/api/linkedin+api.ts`, `src/server/apify.ts` | Server route that fetches your own LinkedIn profile via Apify for Claude |
+| `app/api/team-event+api.ts`, `src/server/teamEvent.ts` | The team demo event: teammates' LinkedIn profiles via Apify, cached |
 | `app/api/discover+api.ts`, `app/api/luma-event+api.ts`, `src/server/luma.ts` | Server routes for public Luma events: suggestions for your city, and lookup by link |
 | `src/api.ts` | The app's calls to those server routes |
 | `prompts/` | The Claude prompts (tweak them here) |
 | `src/luma/` | Luma bridge (hidden WebView), endpoint config and response parsing |
 | `data/sample-guests.json` | Fake guests for the demo |
-| `tests/` | Unit tests for parsing (Vitest) |
+| `src/server/claude.ts` | Shared Claude client and the model name |
+| `docs/SPEC.md` | The product spec we built from |
+| `tests/` | Unit tests for parsing, caching and the team event (Vitest) |
 
-**Live link (if any):** <link>
-
-## Screenshots / demo
-<Drop screenshots here, or link your 2-minute demo video.>
+## Demo video and screenshots
+- **2-minute demo video:** TODO: add the link (it must open for anyone)
+- **Screenshots:** TODO: add them to `docs/screenshots/` and link them here
 
 ## Team
 | Name | Role / background |
@@ -93,7 +96,7 @@ Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in
 - [React Native](https://reactnative.dev) and [react-native-web](https://necolas.github.io/react-native-web/)
 - [react-native-webview](https://github.com/react-native-webview/react-native-webview)
 - [expo-document-picker](https://docs.expo.dev/versions/latest/sdk/document-picker/)
-- [Apify](https://apify.com) actor [harvestapi/linkedin-profile-scraper](https://apify.com/harvestapi/linkedin-profile-scraper) (your own profile only)
+- [Apify](https://apify.com) actor [harvestapi/linkedin-profile-scraper](https://apify.com/harvestapi/linkedin-profile-scraper) (your own profile, and the consenting teammates in the team demo event)
 - [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
 - [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
 - [Luma](https://luma.com) (event data, through the user's own signed-in session)
