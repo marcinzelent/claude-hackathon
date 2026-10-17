@@ -45,11 +45,11 @@ export function useLuma(): LumaApi {
   return ctx;
 }
 
-// On web, Luma's API blocks requests from other sites (CORS, checked 2026-10-17),
-// even ticket links (?tk=), so calls end as "unreachable". Web uses the sample event and paste mode.
-const webTransport: LumaTransport = async (url) => {
-  const r = await fetch(url, { credentials: "omit" });
-  return { status: r.status, body: await r.text() };
+// On web, Luma's API blocks requests from other sites (CORS, checked 2026-10-17), even ticket
+// links (?tk=), so web never calls Luma: it fails right away, and no ticket key leaves the browser.
+// Web uses the sample event and paste mode.
+const webTransport: LumaTransport = async () => {
+  throw new LumaError("unreachable", "Loading from Luma needs the RoomRadar phone app.");
 };
 
 export function LumaBridgeProvider({ children }: { children: ReactNode }) {
@@ -66,6 +66,16 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   });
   const stateRef = useRef(state);
   const status: LumaStatus = checking ? "checking" : state.status;
+
+  // Remounting the WebView drops any request still running in it, so fail those now instead of after 20 s.
+  const remountWebview = () => {
+    for (const waiter of pending.current.values()) {
+      waiter.reject(new LumaError("unreachable", "Luma reconnected. Please try again."));
+    }
+    pending.current.clear();
+    resetReady();
+    setWebviewKey((k) => k + 1);
+  };
 
   const resetReady = () => {
     ready.current = new Promise((resolve) => (markReady.current = resolve));
@@ -133,8 +143,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
       sessionExpired: state.sessionExpired,
       refresh: () => {
         if (!available) return check();
-        resetReady();
-        setWebviewKey((k) => k + 1);
+        remountWebview();
         return check();
       },
       disconnect: async () => {
@@ -149,8 +158,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
           })();
           true;`);
         await new Promise((r) => setTimeout(r, 3000));
-        resetReady();
-        setWebviewKey((k) => k + 1);
+        remountWebview();
         return check("disconnect");
       },
     }),
