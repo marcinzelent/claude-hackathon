@@ -1,9 +1,9 @@
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
 import { enrichTeamEvent, fetchTeamEvent, type TeamEvent } from "../src/api";
-import { LumaError, useLuma } from "../src/luma/LumaBridge";
+import { useLuma } from "../src/luma/LumaBridge";
 import { discoverEvents, lookupEvent, type Discovery } from "../src/api";
 import { loadLinkedEvents, saveLinkedEvents } from "../src/luma/events";
 import { FEATURED_EVENT, FEATURED_PICK } from "../src/luma/featured";
@@ -17,15 +17,13 @@ type LumaState = "loading" | "signedOut" | "ready" | "error" | "unavailable";
 export default function Events() {
   const router = useRouter();
   const luma = useLuma();
-  const { profile, setGuests } = useStore();
+  const { profile, setGuests, setSelected } = useStore();
   const [lumaState, setLumaState] = useState<LumaState>(luma.available ? "loading" : "unavailable");
   const [myEvents, setMyEvents] = useState<LumaEvent[]>([]);
   const [linked, setLinked] = useState<LumaEvent[]>([]);
   const [featured, setFeatured] = useState<LumaEvent>(FEATURED_EVENT);
   const [link, setLink] = useState("");
   const [adding, setAdding] = useState(false);
-  const [openingId, setOpeningId] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -96,22 +94,10 @@ export default function Events() {
     router.push("/results");
   };
 
-  const openEvent = async (event: LumaEvent) => {
-    setError(null);
-    if (!luma.available) {
-      return setError("Loading a guest list needs the phone app (Expo Go). On web, use the sample event or paste the list.");
-    }
-    setOpeningId(event.id);
-    try {
-      if (!(await luma.isSignedIn())) return router.push("/login");
-      const guests = await luma.fetchGuests(event.id, (n) => setStatus(`Loaded ${n} guests…`));
-      go(event.name, guests);
-    } catch (e) {
-      setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
-    } finally {
-      setOpeningId(null);
-      setStatus(null);
-    }
+  // Tapping an event opens its details page; guests are loaded from there.
+  const openEvent = (event: LumaEvent, pick?: EventPick) => {
+    setSelected({ event, pick });
+    router.push({ pathname: "/event", params: { slug: event.slug } });
   };
 
   const addByLink = async () => {
@@ -194,9 +180,8 @@ export default function Events() {
       )}
 
       {events.map((event) => (
-        <EventCard key={event.id} event={event} loading={openingId === event.id} onPress={() => openEvent(event)} />
+        <EventCard key={event.id} event={event} onPress={() => openEvent(event)} />
       ))}
-      {status && <Text style={styles.hint}>{status}</Text>}
 
       <Label>Picked for you in {discovery?.city || city}</Label>
       {!discovery && !discoverError && (
@@ -226,8 +211,7 @@ export default function Events() {
         <EventCard
           event={featured}
           pick={FEATURED_PICK}
-          loading={openingId === featured.id}
-          onPress={() => openEvent(featured)}
+          onPress={() => openEvent(featured, FEATURED_PICK)}
         />
       )}
       {picks.map(({ pick, event }) => (
@@ -235,8 +219,7 @@ export default function Events() {
           key={event.id}
           event={event}
           pick={pick}
-          loading={openingId === event.id}
-          onPress={() => openEvent(event)}
+          onPress={() => openEvent(event, pick)}
         />
       ))}
 
@@ -298,12 +281,10 @@ export default function Events() {
 function EventCard({
   event,
   pick,
-  loading,
   onPress,
 }: {
   event: LumaEvent;
   pick?: EventPick;
-  loading: boolean;
   onPress: () => void;
 }) {
   const when = event.startAt
@@ -316,7 +297,7 @@ function EventCard({
       })
     : null;
   return (
-    <Pressable onPress={onPress} disabled={loading} style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}>
       {event.coverUrl ? (
         <Image source={{ uri: event.coverUrl }} style={styles.cover} />
       ) : (
@@ -339,14 +320,7 @@ function EventCard({
             .join(" · ")}
         </Text>
         {pick && <Text style={styles.why}>{pick.why}</Text>}
-        <View style={styles.row}>
-          <Text style={styles.cta}>{loading ? "Loading guests…" : "Find who to meet →"}</Text>
-          {pick && (
-            <Pressable onPress={() => Linking.openURL(`https://luma.com/${event.slug}`)} hitSlop={8}>
-              <Text style={styles.cta}>View on Luma</Text>
-            </Pressable>
-          )}
-        </View>
+        <Text style={styles.cta}>See details →</Text>
       </View>
     </Pressable>
   );

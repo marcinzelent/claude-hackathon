@@ -25,6 +25,9 @@ export type LumaEvent = {
   hostName?: string; // the Luma calendar that runs it
   coverUrl?: string;
   guestCount?: number;
+  address?: string; // only when the host made it public
+  hosts?: string[]; // only from the single-event lookup
+  description?: string; // plain text, only from the single-event lookup
 };
 
 /** Claude's pick of a public event for this job seeker. */

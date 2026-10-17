@@ -107,6 +107,7 @@ export function normalizeEvent(entry: unknown, guestCount?: unknown): LumaEvent 
     hostName: str(calendar.name),
     coverUrl: str(e.cover_url),
     guestCount: typeof count === "number" ? count : undefined,
+    address: str(geo.full_address) ?? str(geo.address),
   };
   // Drop empty optional fields so merged events don't overwrite real values with undefined.
   return Object.fromEntries(Object.entries(event).filter(([, v]) => v !== undefined)) as LumaEvent;
@@ -124,7 +125,27 @@ export function parseEventPage(payload: unknown): { events: LumaEvent[]; nextCur
 /** Reads the public /url?url=<slug> response for one event. */
 export function parseEventLookup(payload: unknown): LumaEvent | null {
   if (!isObj(payload) || payload.kind !== "event" || !isObj(payload.data)) return null;
-  return normalizeEvent(payload.data, payload.data.guest_count);
+  const event = normalizeEvent(payload.data, payload.data.guest_count);
+  if (!event) return null;
+  const hosts = (Array.isArray(payload.data.hosts) ? payload.data.hosts : [])
+    .map((h) => (isObj(h) ? str(h.name) : undefined))
+    .filter((n): n is string => !!n);
+  const description = str(mirrorToText(payload.data.description_mirror));
+  return { ...event, ...(hosts.length && { hosts }), ...(description && { description }) };
+}
+
+/** Flattens Luma's rich-text description (a ProseMirror doc) into plain text with blank lines between blocks. */
+export function mirrorToText(node: unknown): string {
+  const walk = (n: unknown): string => {
+    if (!isObj(n)) return "";
+    if (n.type === "text") return typeof n.text === "string" ? n.text : "";
+    if (n.type === "hard_break") return "\n";
+    const inner = (Array.isArray(n.content) ? n.content : []).map(walk).join("");
+    if (n.type === "list_item") return `• ${inner.trim()}\n`;
+    if (n.type === "paragraph" || n.type === "heading") return `${inner}\n\n`;
+    return n.type === "bullet_list" || n.type === "ordered_list" ? `${inner}\n` : inner;
+  };
+  return walk(node).replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /** Reads the discover-place id ("discplace-...") from a /url?url=<city> response. */

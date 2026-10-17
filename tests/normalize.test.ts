@@ -3,6 +3,7 @@ import {
   citySlug,
   findEventApiId,
   mergeEvents,
+  mirrorToText,
   parseDiscoverPlace,
   normalizeEvent,
   normalizeGuest,
@@ -104,6 +105,19 @@ describe("events", () => {
       guestCount: 0,
     });
     expect(parseEventLookup({ kind: "calendar", data: {} })).toBeNull();
+  });
+
+  it("adds hosts and the description from the lookup", () => {
+    const description_mirror = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Hello" }, { type: "hard_break" }, { type: "text", text: "there" }] },
+        { type: "bullet_list", content: [{ type: "list_item", content: [{ type: "paragraph", content: [{ type: "text", text: "Pizza" }] }] }] },
+      ],
+    };
+    const payload = { kind: "event", data: { event: evt, hosts: [{ name: "Ada" }, {}], description_mirror } };
+    expect(parseEventLookup(payload)).toMatchObject({ hosts: ["Ada"], description: "Hello\nthere\n\n• Pizza" });
+    expect(mirrorToText(null)).toBe("");
   });
 
   it("reads a page of your events, wrapped or flat", () => {

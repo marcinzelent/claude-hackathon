@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Guest, Match, Profile } from "./types";
+import type { EventPick, Guest, LumaEvent, Match, Profile } from "./types";
 
 // Guests and matches stay in memory only and vanish when the app closes.
 // Only the user's own profile is saved on the device.
@@ -15,6 +15,9 @@ type Store = {
   setGuests: (eventName: string, guests: Guest[]) => void;
   matches: Match[] | null;
   setMatches: (m: Match[] | null) => void;
+  /** The event the user tapped, so its details page can show it right away. */
+  selected: { event: LumaEvent; pick?: EventPick } | null;
+  setSelected: (s: { event: LumaEvent; pick?: EventPick } | null) => void;
 };
 
 const PROFILE_KEY = "roomradar.profile";
@@ -32,6 +35,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [eventName, setEventName] = useState("");
   const [guests, setGuestsState] = useState<Guest[]>([]);
   const [matches, setMatches] = useState<Match[] | null>(null);
+  const [selected, setSelected] = useState<Store["selected"]>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
@@ -52,7 +56,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <StoreContext.Provider value={{ ready, profile, setProfile, eventName, guests, setGuests, matches, setMatches }}>
+    <StoreContext.Provider value={{ ready, profile, setProfile, eventName, guests, setGuests, matches, setMatches, selected, setSelected }}>
       {children}
     </StoreContext.Provider>
   );
