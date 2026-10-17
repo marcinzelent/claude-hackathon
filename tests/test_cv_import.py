@@ -22,6 +22,8 @@ class FakeMessages:
 
 @pytest.fixture
 def client_with(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
     def make(result=None, error=None):
         messages = FakeMessages(result, error)
         monkeypatch.setattr(cv_import, "_get_client", lambda: SimpleNamespace(beta=SimpleNamespace(messages=messages)))

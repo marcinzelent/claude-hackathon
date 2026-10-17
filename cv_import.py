@@ -12,6 +12,7 @@ The PDF is sent to Claude and then dropped. Nothing is written to disk.
 """
 
 import base64
+import os
 from pathlib import Path
 
 import anthropic
@@ -46,6 +47,8 @@ async def profile_from_cv(file: UploadFile = File(...)) -> dict:
         raise HTTPException(413, detail="That file is over 10 MB. Try LinkedIn's 'Save to PDF' version.")
     if not data.startswith(b"%PDF"):
         raise HTTPException(400, detail="Please upload a PDF (your CV, or LinkedIn's 'Save to PDF').")
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(500, detail="Add ANTHROPIC_API_KEY to .env and restart the server.")
 
     try:
         response = await _get_client().beta.messages.parse(
