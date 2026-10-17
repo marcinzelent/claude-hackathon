@@ -27,6 +27,20 @@ describe("parseEventLink", () => {
     expect(parseEventLink("https://luma.com/demo-night?tk=Tk123")).toEqual({ slug: "demo-night", ticketKey: "Tk123" });
     expect(parseEventLink("lu.ma/demo-night?utm=x&tk=Tk123#top")).toEqual({ slug: "demo-night", ticketKey: "Tk123" });
   });
+  it("decodes an encoded ticket key and finds it when it is not the first parameter", () => {
+    expect(parseEventLink("luma.com/demo-night?tk=Tk%2B1%2Fx")).toEqual({ slug: "demo-night", ticketKey: "Tk+1/x" });
+    expect(parseEventLink("luma.com/demo-night?a=1&b=2&tk=Tk123&c=3")).toEqual({
+      slug: "demo-night",
+      ticketKey: "Tk123",
+    });
+  });
+  it("keeps a malformed ticket key as-is instead of throwing", () => {
+    expect(parseEventLink("luma.com/demo-night?tk=100%")).toEqual({ slug: "demo-night", ticketKey: "100%" });
+  });
+  it("has no ticket key when tk is empty or missing", () => {
+    expect(parseEventLink("luma.com/demo-night?tk=")).toEqual({ slug: "demo-night" });
+    expect(parseEventLink("luma.com/demo-night?utm=x")).toEqual({ slug: "demo-night" });
+  });
   it("has no ticket key for public links", () => {
     expect(parseEventLink("luma.com/demo-night")).toEqual({ slug: "demo-night" });
     expect(parseEventLink("not a link")).toBeNull();

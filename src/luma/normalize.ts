@@ -11,6 +11,21 @@ export function parseEventSlug(input: string): string | null {
   return parseEventLink(input)?.slug ?? null;
 }
 
+// URLSearchParams.get is unreliable on React Native's URL polyfill, so parse by hand.
+function queryParam(query: string, name: string): string | undefined {
+  for (const pair of query.split("&")) {
+    const eq = pair.indexOf("=");
+    if (eq < 0 || pair.slice(0, eq) !== name) continue;
+    const raw = pair.slice(eq + 1);
+    try {
+      return decodeURIComponent(raw.replace(/\+/g, " "));
+    } catch {
+      return raw;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Like parseEventSlug, but also keeps the personal ticket key (`tk`) from a
  * ticket link, which unlocks the guest list without a Luma sign-in.
@@ -24,7 +39,7 @@ export function parseEventLink(input: string): { slug: string; ticketKey?: strin
   const match = withoutSlash.match(/^(?:https?:\/\/)?(?:www\.)?(?:luma\.com|lu\.ma)\/(.+)$/i);
   const slug = match ? match[1] : withoutSlash;
   if (!/^[A-Za-z0-9_-]+$/.test(slug)) return null;
-  const ticketKey = str(new URLSearchParams(query).get("tk"));
+  const ticketKey = str(queryParam(query, "tk"));
   return ticketKey ? { slug, ticketKey } : { slug };
 }
 
