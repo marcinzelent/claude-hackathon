@@ -85,7 +85,7 @@ export async function fetchTeamEvent(): Promise<TeamEvent | null> {
   try {
     const res = await fetch(`${apiBase()}/api/team-event`);
     if (!res.ok) return null;
-    return (await res.json()) as TeamEvent;
+    return withAvatarHost((await res.json()) as TeamEvent);
   } catch {
     return null;
   }
@@ -96,5 +96,11 @@ export async function enrichTeamEvent(): Promise<TeamEvent> {
   const res = await fetch(`${apiBase()}/api/team-event`, { method: "POST" });
   const data = (await res.json().catch(() => ({}))) as Partial<TeamEvent> & { error?: string };
   if (!res.ok || !data.guests) throw new Error(data.error ?? `LinkedIn fetch failed (HTTP ${res.status}).`);
-  return data as TeamEvent;
+  return withAvatarHost(data as TeamEvent);
+}
+
+/** Teammates' photos come from our own /api/avatar; on a phone that needs the server's address. */
+function withAvatarHost(team: TeamEvent): TeamEvent {
+  const guests = team.guests.map((g) => (g.avatarUrl?.startsWith("/") ? { ...g, avatarUrl: apiBase() + g.avatarUrl } : g));
+  return { ...team, guests };
 }

@@ -7,8 +7,12 @@ import { TEAM_EVENT_NAME, enrichTeamEvent, teamEventEntries, teamUrls } from "..
 // Never returns raw LinkedIn profiles; /api/rank adds those for Claude only.
 
 // Teammates aren't real Luma users, so drop the made-up Luma profile link.
+// Photos go through /api/avatar, since tracking protection blocks LinkedIn's image CDN.
 const toGuests = (entries: unknown[]) =>
-  parseGuestPage({ entries }).guests.map(({ lumaUrl: _unused, ...g }) => g);
+  parseGuestPage({ entries }).guests.map(({ lumaUrl: _unused, ...g }) => ({
+    ...g,
+    avatarUrl: g.avatarUrl ? `/api/avatar?id=${encodeURIComponent(g.id)}` : undefined,
+  }));
 
 const notConfigured = () =>
   Response.json({ error: "No team event. Add TEAM_EVENT_LINKEDIN_URLS to .env." }, { status: 404 });
