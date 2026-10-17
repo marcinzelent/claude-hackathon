@@ -1,7 +1,8 @@
 import type { LumaEvent } from "../types";
 
 // Our own event, always pinned to the top of "Picked for you" (https://luma.com/noyhvgai).
-// These details show right away; the events screen refreshes them (e.g. guest count) from Luma.
+// It appears together with Claude's picks. These details are the fallback; the events screen
+// refreshes them (e.g. guest count) from Luma.
 export const FEATURED_EVENT: LumaEvent = {
   id: "evt-T3Uts4RWMmuJtgU",
   slug: "noyhvgai",

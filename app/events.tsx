@@ -175,7 +175,6 @@ export default function Events() {
       {status && <Text style={styles.hint}>{status}</Text>}
 
       <Label>Picked for you in {discovery?.city || city}</Label>
-      <EventCard event={featured} loading={openingId === featured.id} onPress={() => openEvent(featured)} />
       {!discovery && !discoverError && (
         <View style={styles.row}>
           <ActivityIndicator color={colors.accent} />
@@ -197,6 +196,10 @@ export default function Events() {
         <Text style={styles.hint}>
           {picks.length} of {discovery.events.length} upcoming public events on Luma fit your goal.
         </Text>
+      )}
+      {/* Our event shows up with Claude's picks, not before them. */}
+      {discovery && (
+        <EventCard event={featured} loading={openingId === featured.id} onPress={() => openEvent(featured)} />
       )}
       {picks.map(({ pick, event }) => (
         <EventCard
