@@ -69,6 +69,23 @@ export async function readTeamEvent(): Promise<TeamEventFile | null> {
   }
 }
 
+/**
+ * Cached LinkedIn details for Claude, keyed by guest id AND by canonical LinkedIn URL,
+ * so real Luma guests (with Luma ids) who are consenting teammates still get them.
+ */
+export async function consentedLinkedin(): Promise<{ byId: Record<string, string>; byUrl: Map<string, string> }> {
+  const cache = await readTeamEvent();
+  const byUrl = new Map<string, string>();
+  const consented = new Set(teamUrls());
+  for (const entry of cache?.entries ?? []) {
+    const handle = entry.user.linkedin_handle;
+    const url = typeof handle === "string" ? parseLinkedinProfileUrl(`linkedin.com${handle}`) : null;
+    const details = cache?.linkedin[entry.api_id];
+    if (url && details && consented.has(url)) byUrl.set(url, details);
+  }
+  return { byId: cache?.linkedin ?? {}, byUrl };
+}
+
 /** The configured teammates, with real names wherever a profile is already cached. */
 export async function teamEventEntries(urls = teamUrls()): Promise<{ entries: LumaEntry[]; cached: number }> {
   const cache = await readTeamEvent();

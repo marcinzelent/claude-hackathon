@@ -10,10 +10,22 @@ export const LUMA_API_BASES = ["https://api2.luma.com", "https://api.lu.ma"];
 
 export const lumaPaths = {
   resolveSlug: (slug: string) => `/url?url=${encodeURIComponent(slug)}`,
-  guestList: (eventApiId: string, cursor?: string) =>
-    `/event/get-guest-list?event_api_id=${encodeURIComponent(eventApiId)}` +
-    `&pagination_limit=100` +
-    (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : ""),
+  // Event details as the signed-in user sees them; holds your ticket_key when you're registered.
+  event: (eventApiId: string) => `/event/get?event_api_id=${encodeURIComponent(eventApiId)}`,
+  /**
+   * Guest-list requests to try, most likely first. luma.com passes the guest's ticket_key when the
+   * list is only visible to registered guests. The first variant that answers is remembered.
+   */
+  guestListVariants: (eventApiId: string, ticketKey: string | null, cursor?: string) => {
+    const id = `event_api_id=${encodeURIComponent(eventApiId)}`;
+    const tk = ticketKey ? `&ticket_key=${encodeURIComponent(ticketKey)}` : "";
+    const page = `&pagination_limit=100` + (cursor ? `&pagination_cursor=${encodeURIComponent(cursor)}` : "");
+    return [
+      `/event/get-guest-list?${id}${tk}${page}`,
+      `/event/get-guest-list?${id}${page}`,
+      `/event/get-guests?${id}${tk}${page}`,
+    ].filter((v, i, all) => all.indexOf(v) === i);
+  },
   // Public "Discover" list for a city (no sign-in). The place id comes from resolveSlug("berlin").
   discover: (placeApiId: string, cursor?: string) =>
     `/discover/get-paginated-events?discover_place_api_id=${encodeURIComponent(placeApiId)}&pagination_limit=50` +

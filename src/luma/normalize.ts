@@ -40,6 +40,22 @@ function handleUrl(base: string, handle: string | undefined): string | undefined
   return base + handle.replace(/^@/, "").replace(/^\/+/, "");
 }
 
+/** Finds the signed-in guest's ticket_key anywhere in a Luma event response. */
+export function findTicketKey(payload: unknown): string | null {
+  const seen = new Set<unknown>();
+  const walk = (v: unknown, depth: number): string | null => {
+    if (!v || typeof v !== "object" || seen.has(v) || depth > 6) return null;
+    seen.add(v);
+    for (const [k, x] of Object.entries(v as Json)) {
+      if (k === "ticket_key" && typeof x === "string" && x) return x;
+      const found = walk(x, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(payload, 0);
+}
+
 /** Converts one guest-list entry (user nested under user/guest, or flat) into a Guest. */
 export function normalizeGuest(entry: unknown): Guest | null {
   if (!isObj(entry)) return null;

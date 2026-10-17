@@ -4,7 +4,8 @@ import { z } from "zod";
 import { RANK_SYSTEM_PROMPT, rankUserPrompt } from "../../prompts/rank";
 import { MINUTE, cacheKey, serverCache } from "../../src/server/cache";
 import { MODEL } from "../../src/server/claude";
-import { readTeamEvent } from "../../src/server/teamEvent";
+import { parseLinkedinProfileUrl } from "../../src/linkedinUrl";
+import { consentedLinkedin } from "../../src/server/teamEvent";
 import type { Guest, Match, Profile } from "../../src/types";
 
 // Runs on the Expo dev/server, never on the phone, so the API key stays in .env.
@@ -47,14 +48,19 @@ export async function POST(request: Request): Promise<Response> {
 
   // Only the public profile fields Claude needs; the ranking stays in server memory for an hour, never on disk.
   // Teammates in the demo event also get their (consented) LinkedIn profile, kept server-side.
-  const linkedin = (await readTeamEvent())?.linkedin ?? {};
-  const slim = guests.slice(0, MAX_GUESTS).map((g) => ({
-    id: g.id,
-    name: g.name,
-    bio: g.bio,
-    links: Object.keys(g.links ?? {}),
-    ...(linkedin[g.id] ? { linkedin: linkedin[g.id] } : {}),
-  }));
+  // Matched by guest id (team list) or by LinkedIn link (real Luma guests who are consenting teammates).
+  const { byId, byUrl } = await consentedLinkedin();
+  const slim = guests.slice(0, MAX_GUESTS).map((g) => {
+    const url = g.links?.linkedin ? parseLinkedinProfileUrl(g.links.linkedin) : null;
+    const linkedin = byId[g.id] ?? (url ? byUrl.get(url) : undefined);
+    return {
+      id: g.id,
+      name: g.name,
+      bio: g.bio,
+      links: Object.keys(g.links ?? {}),
+      ...(linkedin ? { linkedin } : {}),
+    };
+  });
 
   const ask = async (anthropic: Anthropic): Promise<Match[] | null> => {
     const response = await anthropic.beta.messages.parse({

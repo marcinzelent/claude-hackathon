@@ -3,7 +3,7 @@ import { Platform, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { TtlCache } from "../cache";
 import { LUMA_API_BASES, LUMA_WEB_ORIGIN, MAX_GUEST_PAGES, lumaPaths } from "./config";
-import { findEventApiId, mergeEvents, parseEventPage, parseGuestPage } from "./normalize";
+import { findEventApiId, findTicketKey, mergeEvents, parseEventPage, parseGuestPage } from "./normalize";
 import type { Guest, LumaEvent } from "../types";
 
 /*
@@ -97,6 +97,36 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
   );
   const getJson = useCallback((path: string) => cache.current.get(path, () => fetchJson(path)), [fetchJson]);
 
+  // Which guest-list request worked last time (host + variant), so later pages and events go straight there.
+  const guestRoute = useRef<{ base: string; variant: number } | null>(null);
+
+  const fetchGuestPage = useCallback(
+    async (eventId: string, ticketKey: string | null, cursor?: string): Promise<unknown> => {
+      const variants = lumaPaths.guestListVariants(eventId, ticketKey, cursor);
+      const routes = LUMA_API_BASES.flatMap((base) => variants.map((_, variant) => ({ base, variant })));
+      const known = guestRoute.current;
+      if (known) routes.sort((a, b) => Number(b.base === known.base && b.variant === known.variant) - Number(a.base === known.base && a.variant === known.variant));
+
+      const tried: string[] = [];
+      for (const route of routes) {
+        const path = variants[route.variant];
+        try {
+          const res = await request(route.base + path);
+          if (res.status >= 200 && res.status < 300) {
+            guestRoute.current = route;
+            return JSON.parse(res.body);
+          }
+          tried.push(`${path.split("?")[0]}${ticketKey && path.includes("ticket_key") ? " +ticket" : ""} → ${res.status}`);
+        } catch (e) {
+          tried.push(`${path.split("?")[0]} → ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      // Screenshot-friendly summary, so the request can be fixed in src/luma/config.ts.
+      throw new LumaError(`Luma didn't share this guest list (${[...new Set(tried)].join("; ")}).`);
+    },
+    [request],
+  );
+
   const api = useMemo<LumaApi>(
     () => ({
       available,
@@ -129,11 +159,14 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
           ? slugOrId
           : findEventApiId(await getJson(lumaPaths.resolveSlug(slugOrId)));
         if (!eventId) throw new LumaError("Could not find that event on Luma.");
+        // Registered guests see the list through their ticket; look it up once (optional).
+        const ticketKey = findTicketKey(await getJson(lumaPaths.event(eventId)).catch(() => null));
 
         const guests: Guest[] = [];
         let cursor: string | undefined;
         for (let page = 0; page < MAX_GUEST_PAGES; page++) {
-          const { guests: batch, nextCursor } = parseGuestPage(await getJson(lumaPaths.guestList(eventId, cursor)));
+          const payload = await fetchGuestPage(eventId, ticketKey, cursor);
+          const { guests: batch, nextCursor } = parseGuestPage(payload);
           guests.push(...batch);
           onProgress?.(guests.length);
           if (!nextCursor) break;
@@ -145,7 +178,7 @@ export function LumaBridgeProvider({ children }: { children: ReactNode }) {
         return guests;
       },
     }),
-    [available, getJson],
+    [available, getJson, fetchGuestPage],
   );
 
   const onMessage = (event: WebViewMessageEvent) => {

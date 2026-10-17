@@ -4,8 +4,9 @@ import { ActivityIndicator, Image, Linking, ScrollView, StyleSheet, Text, View }
 import { enrichTeamEvent, lookupEvent } from "../../../src/api";
 import { LumaError, useLuma } from "../../../src/luma/LumaBridge";
 import { FEATURED_EVENT } from "../../../src/luma/featured";
+import { sameLinkedin } from "../../../src/linkedinUrl";
 import { useStore } from "../../../src/store";
-import type { LumaEvent } from "../../../src/types";
+import type { Guest, LumaEvent } from "../../../src/types";
 import { Button, Label, colors, scoreColor } from "../../../src/ui";
 
 // Details of one event: when, where, who hosts it, Claude's reason, and the full description.
@@ -41,7 +42,7 @@ export default function EventDetails() {
     setStatus("Fetching LinkedIn profiles through Apify, then Claude scores them. The first time takes up to a minute…");
     try {
       const team = await enrichTeamEvent();
-      const others = team.guests.filter((g) => !profile.linkedinUrl || g.links.linkedin !== profile.linkedinUrl);
+      const others = team.guests.filter((g) => !sameLinkedin(g.links.linkedin, profile.linkedinUrl));
       if (team.failed?.length) setError(`Couldn't fetch ${team.failed.length} profile(s); ranking the rest.`);
       setGuests(event.name, others);
       router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
@@ -53,20 +54,55 @@ export default function EventDetails() {
     }
   };
 
+  // Real guest list through your own Luma sign-in (phone app only), without you in it.
+  const loadLumaGuests = async (eventId: string): Promise<Guest[] | null> => {
+    if (!luma.available) return null;
+    if (!(await luma.isSignedIn())) {
+      router.push("/login");
+      return null;
+    }
+    const guests = await luma.fetchGuests(eventId, (n) => setStatus(`Loaded ${n} guests…`));
+    return guests.filter((g) => !sameLinkedin(g.links.linkedin, profile.linkedinUrl));
+  };
+
+  const openPeople = (guests: Guest[]) => {
+    if (!event) return;
+    setGuests(event.name, guests);
+    router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
+  };
+
   const findPeople = async () => {
     if (!event) return;
     setError(null);
-    if (event.slug === FEATURED_EVENT.slug) return findTeam();
+    const featured = event.slug === FEATURED_EVENT.slug;
     if (!luma.available) {
+      if (featured) return findTeam(); // web: the team list stands in for the real guest list
       return setError("Loading a guest list needs the phone app (Expo Go). On web, use the sample event or paste the list.");
     }
     setOpening(true);
     try {
-      if (!(await luma.isSignedIn())) return router.push("/login");
-      const guests = await luma.fetchGuests(event.id, (n) => setStatus(`Loaded ${n} guests…`));
-      setGuests(event.name, guests);
-      router.push({ pathname: "/event/[slug]/people", params: { slug: event.slug } });
+      if (featured) {
+        // Our own event: real Luma guests, plus the teammates' (consented) LinkedIn details for Claude.
+        setStatus("Loading the guest list from Luma and your teammates' LinkedIn profiles…");
+        const [guests, team] = await Promise.all([loadLumaGuests(event.id), enrichTeamEvent().catch(() => null)]);
+        if (!guests) return;
+        const teammates = team?.guests ?? [];
+        openPeople(
+          guests.map((g) => {
+            const mate = teammates.find((t) => sameLinkedin(t.links.linkedin, g.links.linkedin));
+            return mate ? { ...g, avatarUrl: g.avatarUrl ?? mate.avatarUrl, bio: g.bio ?? mate.bio } : g;
+          }),
+        );
+        return;
+      }
+      const guests = await loadLumaGuests(event.id);
+      if (guests) openPeople(guests);
     } catch (e) {
+      if (featured) {
+        setError(`${e instanceof LumaError ? e.message : "Luma didn't answer."} Showing the team list instead.`);
+        await findTeam();
+        return;
+      }
       setError(e instanceof LumaError ? e.message : "Something went wrong talking to Luma. Try pasting the list instead.");
     } finally {
       setOpening(false);
