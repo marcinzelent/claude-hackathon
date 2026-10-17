@@ -36,3 +36,14 @@ describe("parseLinkedinProfileUrl case", () => {
     expect(parseLinkedinProfileUrl("https://www.linkedin.com/in/Fake-Alpha/")).toBe("https://www.linkedin.com/in/fake-alpha");
   });
 });
+
+describe("hostScheme", () => {
+  it("uses http on the local network and https through tunnels", async () => {
+    const { hostScheme } = await import("../src/hostScheme");
+    expect(hostScheme("192.168.1.23:8081")).toBe("http");
+    expect(hostScheme("localhost:8081")).toBe("http");
+    expect(hostScheme("mates-macbook.local:8081")).toBe("http");
+    expect(hostScheme("ogpliuo-anonymous-8081.exp.direct")).toBe("https");
+    expect(hostScheme("something-random.trycloudflare.com")).toBe("https");
+  });
+});

@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { hostScheme } from "./hostScheme";
 import { Platform } from "react-native";
 import type { EventPick, Guest, LumaEvent, Match, Profile } from "./types";
 
@@ -8,8 +9,9 @@ export function apiBase(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, "");
   if (Platform.OS === "web") return "";
   const host = Constants.expoConfig?.hostUri;
-  return host ? `http://${host}` : "";
+  return host ? `${hostScheme(host)}://${host}` : "";
 }
+
 
 export async function rankGuests(profile: Profile, guests: Guest[]): Promise<Match[]> {
   const res = await fetch(`${apiBase()}/api/rank`, {
