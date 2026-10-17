@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { rankGuests } from "../src/api";
 import { useStore } from "../src/store";
 import type { Match, RankedGuest } from "../src/types";
@@ -36,17 +36,30 @@ export default function Results() {
       .sort((a, b) => (b.match?.score ?? -1) - (a.match?.score ?? -1));
   }, [guests, matches]);
 
+  const [copied, setCopied] = useState(false);
+
   // A plain-text plan for the night: the top people, why, and what to say.
-  const sharePlan = () =>
-    Share.share({
-      message: [
-        `Who to meet at ${eventName}`,
-        ...ranked
-          .filter((g) => g.match)
-          .slice(0, 5)
-          .map((g, i) => `\n${i + 1}. ${g.name} (${g.match!.score})\n${g.match!.why}\nSay hi: “${g.match!.opener}”`),
-      ].join("\n"),
-    });
+  // Desktop browsers have no share sheet, so on web it's copied to the clipboard instead.
+  const sharePlan = async () => {
+    const message = [
+      `Who to meet at ${eventName}`,
+      ...ranked
+        .filter((g) => g.match)
+        .slice(0, 5)
+        .map((g, i) => `\n${i + 1}. ${g.name} (${g.match!.score})\n${g.match!.why}\nSay hi: “${g.match!.opener}”`),
+    ].join("\n");
+    try {
+      if (Platform.OS === "web" && !navigator.share) {
+        await navigator.clipboard.writeText(message);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        await Share.share({ message });
+      }
+    } catch {
+      // The user closed the share sheet, or the browser blocked the clipboard: nothing to do.
+    }
+  };
 
   if (guests.length === 0) {
     return <Text style={styles.center}>No guests loaded yet. Go back and pick an event.</Text>;
@@ -75,7 +88,7 @@ export default function Results() {
               <Button title="Try again" onPress={run} />
             </>
           )}
-          {matches && <Button title="Share my plan" variant="secondary" onPress={sharePlan} />}
+          {matches && <Button title={copied ? "Copied to clipboard" : "Share my plan"} variant="secondary" onPress={sharePlan} />}
         </View>
       }
       renderItem={({ item }) => <GuestCard guest={item} />}
