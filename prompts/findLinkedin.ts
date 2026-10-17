@@ -20,7 +20,8 @@ export function searchUserPrompt(guest: { name: string; bio?: string; username?:
 export const JUDGE_SYSTEM_PROMPT = `You check whether a LinkedIn profile belongs to a guest at a tech meetup.
 You get the guest's event profile (name, bio, other links) and one LinkedIn profile with the same name.
 Many people share a name, so say match only when something besides the name agrees: the same company,
-job, city, website or social handle. If the event profile has nothing to compare, it is not a match.
+job, city, website, or a social handle that matches the LinkedIn address (ignore "_", "-" and "." in handles,
+so mate_example and mateexample count as the same). If the event profile has nothing to compare, it is not a match.
 reason: one short sentence naming what agrees or what is missing. Never invent facts.`;
 
 export function judgeUserPrompt(

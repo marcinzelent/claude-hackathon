@@ -4,6 +4,8 @@ import {
   MAX_LOOKUPS,
   findLinkedin,
   findLinkedins,
+  handleOf,
+  matchingHandle,
   namesMatch,
   needsLookup,
   profileName,
@@ -59,6 +61,30 @@ describe("namesMatch", () => {
   });
 });
 
+describe("handleOf", () => {
+  it("takes the handle from a profile link, a bare handle or an @handle", () => {
+    expect(handleOf("https://www.instagram.com/jana_beispiel/")).toBe("jana_beispiel");
+    expect(handleOf("https://www.linkedin.com/in/janabeispiel?trk=x")).toBe("janabeispiel");
+    expect(handleOf("@jana.beispiel")).toBe("jana.beispiel");
+    expect(handleOf("janabeispiel")).toBe("janabeispiel");
+  });
+});
+
+describe("matchingHandle", () => {
+  const linkedin = "https://www.linkedin.com/in/janabeispiel";
+  it("finds a social handle that is the LinkedIn address, ignoring _ - and .", () => {
+    expect(matchingHandle(guest({ links: { instagram: "https://www.instagram.com/jana_beispiel" } }), linkedin)).toBe(
+      "jana_beispiel",
+    );
+    expect(matchingHandle(guest({ links: { twitter: "Jana.Beispiel" } }), linkedin)).toBe("Jana.Beispiel");
+  });
+  it("finds nothing for different handles, no links, or a very short address", () => {
+    expect(matchingHandle(guest({ links: { instagram: "https://www.instagram.com/jana_b" } }), linkedin)).toBeUndefined();
+    expect(matchingHandle(guest(), linkedin)).toBeUndefined();
+    expect(matchingHandle(guest({ links: { twitter: "jana" } }), "https://www.linkedin.com/in/jana")).toBeUndefined();
+  });
+});
+
 describe("profileName", () => {
   it("reads first and last name, full name or name", () => {
     expect(profileName({ firstName: "Jana", lastName: "Beispiel" })).toBe("Jana Beispiel");
@@ -80,6 +106,15 @@ describe("findLinkedin", () => {
   it("never asks the judge about a profile with a different name", async () => {
     const { steps } = fakeSteps(["https://www.linkedin.com/in/someone-else"], () => true);
     expect(await findLinkedin(guest(), steps)).toBeNull();
+  });
+
+  it("accepts a same-name profile whose address is one of the guest's handles, without asking the judge", async () => {
+    const { steps } = fakeSteps(["https://www.linkedin.com/in/jana-beispiel-2"], () => false);
+    const g = guest({ bio: undefined, links: { instagram: "https://www.instagram.com/jana_beispiel2" } });
+    expect(await findLinkedin(g, steps)).toEqual({
+      url: "https://www.linkedin.com/in/jana-beispiel-2",
+      reason: "Their handle jana_beispiel2 is also the LinkedIn address.",
+    });
   });
 
   it("finds nothing when the judge rejects every candidate", async () => {

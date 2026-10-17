@@ -8,7 +8,7 @@ import type { Guest, LinkedinGuess } from "../../src/types";
 // For guests who didn't connect LinkedIn on Luma: web search, Apify, and Claude's check (src/server/findLinkedin.ts).
 // Built for the demo event, where every guest is a teammate who agreed. Results stay in server memory for an hour.
 
-const guessCache = serverCache<LinkedinGuess | null>("linkedin-guess-v3", 60 * MINUTE);
+const guessCache = serverCache<LinkedinGuess | null>("linkedin-guess-v4", 60 * MINUTE);
 
 export async function POST(request: Request): Promise<Response> {
   const client = claudeClient();

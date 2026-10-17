@@ -8,7 +8,7 @@ import type { FinderSteps } from "./findLinkedin";
 
 // Server-only: the real steps behind findLinkedin. Claude's web search finds candidates,
 // Apify loads them (cached for an hour), and Claude compares each one with the Luma profile.
-// NOT VERIFIED live: built for the demo event, where every guest is a teammate who agreed.
+// Verified live once (one guest). Built for the demo event, where every guest is a teammate who agreed.
 
 /** Enough of a profile for the name and job comparison; the rest is cut off. */
 const MAX_PROFILE_CHARS = 8_000;

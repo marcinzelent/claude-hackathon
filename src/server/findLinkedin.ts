@@ -3,7 +3,7 @@ import type { Guest, LinkedinGuess } from "../types";
 
 // Finds LinkedIn profiles for guests who didn't connect one on Luma:
 // a web search suggests candidates, Apify loads each one, and only a profile whose name matches
-// and that Claude confirms against the Luma bio counts. The result is always a "possible match".
+// and that a shared handle or Claude confirms against the Luma bio counts. The result is always a "possible match".
 // The steps are injected so this file has no Claude or Apify code and can be tested with fakes.
 
 export type FinderSteps = {
@@ -50,6 +50,26 @@ export function namesMatch(lumaName: string, profileName: string | undefined): b
   return want.length >= 2 && have.has(want[0]) && have.has(want[want.length - 1]);
 }
 
+/** A handle or address with everything but letters and digits dropped, so "mate_steinforth" and "matesteinforth" agree. */
+const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** The handle at the end of a profile link: the last non-empty path segment, without "@" or a query string. */
+export function handleOf(linkOrHandle: string): string {
+  const path = linkOrHandle.replace(/^https?:\/\/[^/]+/i, "").replace(/[?#].*$/, "");
+  const parts = path.split("/").filter(Boolean);
+  return (parts[parts.length - 1] ?? "").replace(/^@/, "");
+}
+
+/** The guest's social handle that is the LinkedIn address, if any. Two people rarely share a name AND a handle. */
+export function matchingHandle(guest: Guest, linkedinUrl: string): string | undefined {
+  const want = squash(handleOf(linkedinUrl));
+  if (want.length < 6) return undefined;
+  return Object.values(guest.links)
+    .filter((v): v is string => !!v)
+    .map(handleOf)
+    .find((h) => squash(h) === want);
+}
+
 /** The person's name from a scraped LinkedIn profile, whichever field the scraper used. */
 export function profileName(profile: unknown): string | undefined {
   if (!profile || typeof profile !== "object") return undefined;
@@ -78,6 +98,11 @@ export async function findLinkedin(guest: Guest, steps: FinderSteps): Promise<Li
     if (!namesMatch(guest.name, profileName(profile))) {
       steps.log?.(`${url}: name differs ("${profileName(profile) ?? "no name"}")`);
       continue;
+    }
+    const handle = matchingHandle(guest, url);
+    if (handle) {
+      steps.log?.(`${url}: match (handle ${handle} is the LinkedIn address)`);
+      return { url, reason: `Their handle ${handle} is also the LinkedIn address.` };
     }
     const verdict = await steps.judge(guest, profile);
     steps.log?.(`${url}: ${verdict.match ? "match" : "no match"} (${verdict.reason})`);
