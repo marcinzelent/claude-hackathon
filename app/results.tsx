@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { toJsonl } from "../src/luma/normalize";
 import { rankGuests } from "../src/api";
 import { useStore } from "../src/store";
@@ -74,11 +74,31 @@ export default function Results() {
   );
 }
 
+// Headshot from LinkedIn or Luma; initials if there is none or it fails to load (LinkedIn photo links expire).
+function Avatar({ name, url }: { name: string; url?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (url && !failed) {
+    return <Image source={{ uri: url }} style={styles.avatar} onError={() => setFailed(true)} accessibilityLabel={name} />;
+  }
+  const initials = name
+    .split(/\s+/)
+    .map((p) => p.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <View style={[styles.avatar, styles.initials]}>
+      <Text style={styles.initialsText}>{initials}</Text>
+    </View>
+  );
+}
+
 function GuestCard({ guest }: { guest: RankedGuest }) {
   const m = guest.match;
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
+        <Avatar name={guest.name} url={guest.avatarUrl} />
         <Text style={styles.name}>{guest.name}</Text>
         {m && (
           <View style={[styles.score, { backgroundColor: scoreColor(m.score) }]}>
@@ -129,7 +149,10 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accentSoft },
+  initials: { alignItems: "center", justifyContent: "center" },
+  initialsText: { color: colors.accent, fontWeight: "700" },
   name: { fontSize: 17, fontWeight: "700", color: colors.text, flex: 1 },
   score: { borderRadius: 999, minWidth: 40, paddingHorizontal: 10, paddingVertical: 4, alignItems: "center" },
   scoreText: { color: "#fff", fontWeight: "700" },
