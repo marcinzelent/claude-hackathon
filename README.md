@@ -1,30 +1,61 @@
-> 👋 **Starter for Claude Impact Lab teams.** Fill in each section below as you build and delete this note.
->
-> 📅 **Agenda, rules, deadline and judging** are in the event repo: **[claude-impact-lab-berlin-2026-10-17](https://github.com/Claude-Community-Berlin/claude-impact-lab-berlin-2026-10-17)**. Read it first.
->
-> ✅ **When you're finished:** record a 2-minute demo video, then submit with the **[submission form](https://tally.so/r/1WPr9Q)** before **16:00**. One submission per team.
->
-> 🔑 Set your API key first: `cp .env.example .env`, then paste your key into `.env` (it's git-ignored, never commit it).
+# RoomRadar
 
-# <Project name>
-
-**One line:** <what it does, for whom>
+**One line:** Helps job seekers who want to work in AI find out who to talk to at an AI meetup, why, and what to ask them.
 
 ## The problem
-<Who has this problem, and why it matters. 2–3 sentences.>
+- **Audience:** job seekers trying to break into AI, for example career changers, bootcamp grads and junior engineers in Berlin.
+- **Their problem with AI today:** the AI industry hires through networks. Meetups are full of the right people, but newcomers don't know who's who, what to ask, or how to start the conversation.
+- **What the demo lets them do:** paste a Luma event link, and Claude ranks the guest list for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
 
 ## What it does
-<What a user can do with it. A short list is fine.>
+1. You type the job you want and a line about your background.
+2. You load the guests:
+   - **From Luma (mobile app):** sign in to Luma once inside the app, then paste an event link you're registered for.
+   - **Sample event:** a fake Berlin AI meetup, used for the demo.
+   - **Paste:** names copied from Luma's guest list, or Luma's guest-list JSON.
+3. Claude ranks everyone from 0 to 100. Each card shows *why*, *say hi* (an opener) and *learn from them*, plus the person's public links.
+4. You can export the ranked list as JSONL.
 
 ## How Claude is used
-<What Claude does inside the product: which model, what it reads, what it produces.>
+- **Model:** `claude-opus-5-5` through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Server-side refusal fallbacks are switched on (`fallbacks: "default"`).
+- **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
+- **What Claude produces:** a score, a one-line reason, a conversation opener and a learning tip for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
+- **Where:** the call runs in a server route (`app/api/rank+api.ts`), so the API key never reaches the phone. The prompt lives in `prompts/rank.ts`.
+
+## Privacy by design
+- Your Luma sign-in stays on your phone. A hidden WebView makes the requests from inside Luma's own page, so the app never reads, stores or uploads your Luma session.
+- Guest data only lives in memory and is gone when you close the app. Nothing is saved on a server.
+- It only shows guests that you could already see on Luma yourself.
+- The demo and video use **fake sample guests** (`data/sample-guests.json`), not real people.
 
 ## How to run it
 ```bash
-cp .env.example .env    # paste your ANTHROPIC_API_KEY into .env
-# then the commands to start it, e.g.
-# python app.py   or   npm install && npm run dev   or   open index.html
+cp .env.example .env    # paste your ANTHROPIC_API_KEY into .env (git-ignored, never commit it)
+npm install
+npx expo start          # press w for web, or scan the QR code with Expo Go on your phone
 ```
+- **Web:** the sample event and paste mode work. Live Luma loading needs the phone app.
+- **Phone:** install **Expo Go** and scan the QR code. Your phone and laptop must be on the same Wi-Fi, because the app calls the ranking route on the laptop's dev server. If that doesn't work, set `EXPO_PUBLIC_API_URL=http://<laptop-ip>:8081` in `.env`.
+- **Checks:** `npm run typecheck` and `npm test`.
+
+**Heads-up about Luma:** Luma has no public guest API for guests, so `src/luma/config.ts` uses the internal endpoints luma.com itself calls. They weren't verified while building and may change. If live loading fails:
+1. Open the event on luma.com, open DevTools and go to the Network tab.
+2. Click "N Going".
+3. Copy the real request URL into `src/luma/config.ts`.
+
+Paste mode always works as a fallback.
+
+## Project layout
+| Path | What it is |
+|---|---|
+| `app/index.tsx` | Home screen: your goal, event link, sample and paste options |
+| `app/results.tsx` | Ranked guest cards and JSONL export |
+| `app/login.tsx` | Luma sign-in inside the app |
+| `app/api/rank+api.ts` | Server route that calls Claude |
+| `prompts/rank.ts` | The Claude prompt (tweak it here) |
+| `src/luma/` | Luma bridge (hidden WebView), endpoint config and response parsing |
+| `data/sample-guests.json` | Fake guests for the demo |
+| `tests/` | Unit tests for parsing (Vitest) |
 
 **Live link (if any):** <link>
 
@@ -32,16 +63,21 @@ cp .env.example .env    # paste your ANTHROPIC_API_KEY into .env
 <Drop screenshots here, or link your 2-minute demo video.>
 
 ## Team
-Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus founder or anyone). Link each name to a GitHub or LinkedIn profile, and replace the example row with your team.
+Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus founder or anyone). Link each name to a GitHub or LinkedIn profile.
 
 | Name | Role / background |
 |---|---|
-| [Mehul Patel](https://github.com/nomadicmehul) *(example)* | Claude Ambassador, DevRel |
-| [Your name](https://www.linkedin.com/in/your-profile) | Builder / Product or design / Domain expert / Founder |
 | [Your name](https://github.com/your-username) | |
 | [Your name](https://github.com/your-username) | |
-| [Your name](https://github.com/your-username) *(optional)* | |
-| [Your name](https://github.com/your-username) *(optional)* | |
+| [Your name](https://github.com/your-username) | |
+| [Your name](https://github.com/your-username) | |
+| [Your name](https://github.com/your-username) | |
 
 ## Credits
-<Open-source libraries, APIs, datasets and assets you used.>
+- [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) and Claude
+- [Expo](https://expo.dev) and [Expo Router](https://docs.expo.dev/router/introduction/)
+- [React Native](https://reactnative.dev) and [react-native-web](https://necolas.github.io/react-native-web/)
+- [react-native-webview](https://github.com/react-native-webview/react-native-webview)
+- [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
+- [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
+- [Luma](https://luma.com) (event data, through the user's own signed-in session)

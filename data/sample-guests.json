@@ -1,0 +1,16 @@
+[
+  { "id": "s1", "name": "Lena Hartmann", "bio": "Engineering Manager, ML Platform at a Berlin fintech. We're hiring junior MLOps engineers this quarter.", "links": { "linkedin": "https://www.linkedin.com/in/example-lena" } },
+  { "id": "s2", "name": "Tomás Ribeiro", "bio": "Founder @ a 6-person GenAI startup (document automation). Always looking for curious builders.", "links": { "twitter": "https://x.com/example_tomas", "website": "https://example.com" } },
+  { "id": "s3", "name": "Priya Nair", "bio": "Developer Advocate for an open-source vector database. I run the monthly Berlin GenAI meetup.", "links": { "linkedin": "https://www.linkedin.com/in/example-priya", "twitter": "https://x.com/example_priya" } },
+  { "id": "s4", "name": "Jonas Weber", "bio": "Tech recruiter focused on AI/ML roles in DACH.", "links": { "linkedin": "https://www.linkedin.com/in/example-jonas" } },
+  { "id": "s5", "name": "Mira Kowalski", "bio": "Switched from teaching to data science 2 years ago, now ML engineer. Happy to share how I did it.", "links": { "linkedin": "https://www.linkedin.com/in/example-mira" } },
+  { "id": "s6", "name": "Felix Braun", "bio": "Product designer. Exploring AI-native UX.", "links": { "website": "https://example.org" } },
+  { "id": "s7", "name": "Aisha Bello", "bio": "PhD student in reinforcement learning at a Berlin university.", "links": {} },
+  { "id": "s8", "name": "Kai Neumann", "bio": "Partner at an early-stage VC fund investing in European AI infrastructure.", "links": { "linkedin": "https://www.linkedin.com/in/example-kai" } },
+  { "id": "s9", "name": "Sophie Laurent", "bio": "Techno DJ and event producer.", "links": { "instagram": "https://instagram.com/example_sophie" } },
+  { "id": "s10", "name": "Daniel Ortiz", "bio": "Solutions architect at a GPU cloud provider. Ask me about fine-tuning on a budget.", "links": { "linkedin": "https://www.linkedin.com/in/example-daniel" } },
+  { "id": "s11", "name": "Noor", "links": {} },
+  { "id": "s12", "name": "max_b", "links": {} },
+  { "id": "s13", "name": "Hannah Fischer", "bio": "Head of People at a Series B AI company. Building our first graduate program.", "links": { "linkedin": "https://www.linkedin.com/in/example-hannah" } },
+  { "id": "s14", "name": "Ravi Menon", "bio": "Backend engineer, Go and Kubernetes. Curious about LLMs.", "links": { "twitter": "https://x.com/example_ravi" } }
+]
