@@ -48,11 +48,11 @@ npx expo start          # press w for web, or scan the QR code with Expo Go on y
 Paste mode always works as a fallback.
 
 ## Team demo event (real, consenting teammates)
-For the demo, the team's own teammates act as event guests, as if imported from Luma. Each one agreed to have their LinkedIn profile used. Their profiles are fetched once through Apify, and Claude uses the full LinkedIn details when ranking them:
-```bash
-npm run enrich -- https://www.linkedin.com/in/teammate-1 https://www.linkedin.com/in/teammate-2
-```
-This writes `data/team-event.json`. That file is **git-ignored and must never be committed**, because it holds real people's data. A **"Team demo event"** button then appears on the events screen. The raw LinkedIn data stays on the server, and only Claude sees it. LinkedIn's terms prohibit scraping, so this only runs on teammates who agreed, never on profiles a user types in.
+For the demo, our own teammates act as event guests, as if imported from Luma. All of them agreed to have their public LinkedIn profiles used. The flow in the app:
+1. **Onboarding:** paste your LinkedIn link and tap *Import from LinkedIn*. Claude fills in your goal and background, and the app remembers your link.
+2. **Your events → Team demo event → Find who to meet.** The server fetches the teammates' LinkedIn profiles through Apify, then Claude scores them using their full experience. You're left out automatically if your link is on the list.
+
+Teammates' links are in `src/server/teamEvent.ts`; `TEAM_EVENT_LINKEDIN_URLS` in `.env` can override them. The first tap takes up to a minute. After that, profiles come from the git-ignored cache `data/team-event.json` (never commit it), so it's instant and costs no extra Apify credit. `npm run enrich` fills the cache ahead of the demo. LinkedIn's terms prohibit scraping, so this only runs on teammates who agreed, never on profiles a user types in.
 
 ## Project layout
 | Path | What it is |

@@ -38,3 +38,18 @@ describe("nameAndHeadline", () => {
     expect(nameAndHeadline({}, "some-slug")).toEqual({ name: "some-slug", headline: undefined });
   });
 });
+
+describe("teamUrls", () => {
+  it("uses the built-in teammates, canonicalised", async () => {
+    const { teamUrls } = await import("../src/server/teamEvent");
+    delete process.env.TEAM_EVENT_LINKEDIN_URLS;
+    expect(teamUrls()).toContain("https://www.linkedin.com/in/robin-kryszak");
+    expect(teamUrls().every((u) => u.startsWith("https://www.linkedin.com/in/"))).toBe(true);
+  });
+  it("lets .env override the list", async () => {
+    const { teamUrls } = await import("../src/server/teamEvent");
+    process.env.TEAM_EVENT_LINKEDIN_URLS = "linkedin.com/in/a, https://de.linkedin.com/in/b/ not-a-link";
+    expect(teamUrls()).toEqual(["https://www.linkedin.com/in/a", "https://www.linkedin.com/in/b"]);
+    delete process.env.TEAM_EVENT_LINKEDIN_URLS;
+  });
+});

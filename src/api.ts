@@ -51,13 +51,23 @@ export async function importLinkedin(url: string): Promise<ImportedProfile> {
   return { goal: data.goal, background: data.background ?? "", tip: data.tip ?? null };
 }
 
-/** The team's demo event from `npm run enrich`, or null if it hasn't been built on this server. */
-export async function fetchTeamEvent(): Promise<{ name: string; guests: Guest[] } | null> {
+export type TeamEvent = { name: string; guests: Guest[]; failed?: { url: string; error: string }[] };
+
+/** The team's demo event guest list, or null if this server has none configured. */
+export async function fetchTeamEvent(): Promise<TeamEvent | null> {
   try {
     const res = await fetch(`${apiBase()}/api/team-event`);
     if (!res.ok) return null;
-    return (await res.json()) as { name: string; guests: Guest[] };
+    return (await res.json()) as TeamEvent;
   } catch {
     return null;
   }
+}
+
+/** Fetches teammates' LinkedIn profiles through Apify (server-side, cached) and returns the enriched list. */
+export async function enrichTeamEvent(): Promise<TeamEvent> {
+  const res = await fetch(`${apiBase()}/api/team-event`, { method: "POST" });
+  const data = (await res.json().catch(() => ({}))) as Partial<TeamEvent> & { error?: string };
+  if (!res.ok || !data.guests) throw new Error(data.error ?? `LinkedIn fetch failed (HTTP ${res.status}).`);
+  return data as TeamEvent;
 }

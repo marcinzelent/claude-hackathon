@@ -2,7 +2,7 @@ import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
-import { fetchTeamEvent } from "../src/api";
+import { enrichTeamEvent, fetchTeamEvent, type TeamEvent } from "../src/api";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { discoverEvents, loadLinkedEvents, lookupEvent, saveLinkedEvents, type Discovery } from "../src/luma/events";
 import { mergeEvents, parsePastedGuests } from "../src/luma/normalize";
@@ -29,9 +29,10 @@ export default function Events() {
   const [discovery, setDiscovery] = useState<Discovery | null>(null);
   const [discoverError, setDiscoverError] = useState<string | null>(null);
   const discoverKey = useRef("");
-  const [teamEvent, setTeamEvent] = useState<{ name: string; guests: Guest[] } | null>(null);
+  const [teamEvent, setTeamEvent] = useState<TeamEvent | null>(null);
+  const [teamLoading, setTeamLoading] = useState(false);
 
-  // The team's demo event (teammates' LinkedIn profiles, built with `npm run enrich`), if this server has one.
+  // The team's demo event (teammates from TEAM_EVENT_LINKEDIN_URLS in .env), if this server has one.
   useEffect(() => {
     fetchTeamEvent().then(setTeamEvent);
   }, []);
@@ -119,6 +120,22 @@ export default function Events() {
       setError(e instanceof Error ? e.message : "Couldn't add that event.");
     } finally {
       setAdding(false);
+    }
+  };
+
+  // Fetch teammates' LinkedIn profiles via Apify (cached after the first time), then rank.
+  const openTeamEvent = async () => {
+    setError(null);
+    setTeamLoading(true);
+    try {
+      const event = await enrichTeamEvent();
+      const others = event.guests.filter((g) => !profile.linkedinUrl || g.links.linkedin !== profile.linkedinUrl);
+      if (event.failed?.length) setError(`Couldn't fetch ${event.failed.length} profile(s); ranking the rest.`);
+      go(event.name, others);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't load the team event.");
+    } finally {
+      setTeamLoading(false);
     }
   };
 
@@ -218,13 +235,24 @@ export default function Events() {
       />
       <Button title="Add event" variant="secondary" onPress={addByLink} loading={adding} disabled={!link.trim()} />
 
-      <Label>Just trying it out?</Label>
+      {teamEvent && <Label>Your team's event</Label>}
       {teamEvent && (
-        <Button
-          title={`${teamEvent.name} (${teamEvent.guests.length} teammates)`}
-          onPress={() => go(teamEvent.name, teamEvent.guests)}
-        />
+        <View style={styles.teamCard}>
+          <Text style={styles.teamTitle}>{teamEvent.name}</Text>
+          <Text style={styles.teamMeta}>
+            {teamEvent.guests.map((g) => g.name).join(" · ")}
+          </Text>
+          <Text style={styles.teamMeta}>Guests from Luma, profiles from LinkedIn via Apify, scored by Claude.</Text>
+          <Button title="Find who to meet" onPress={openTeamEvent} loading={teamLoading} />
+          {teamLoading && (
+            <Text style={styles.teamMeta}>
+              Fetching LinkedIn profiles through Apify, then Claude scores them. The first time takes up to a minute…
+            </Text>
+          )}
+        </View>
       )}
+
+      <Label>Just trying it out?</Label>
       <Button
         title="Try with a sample event"
         variant="secondary"
@@ -321,6 +349,17 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   paste: { minHeight: 140, textAlignVertical: "top" },
+  teamCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    padding: 14,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  teamTitle: { fontSize: 17, fontWeight: "700", color: colors.text },
+  teamMeta: { color: colors.muted, marginTop: 4, lineHeight: 19 },
   hint: { marginTop: 6, color: colors.muted, fontSize: 13, lineHeight: 18 },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
   card: {

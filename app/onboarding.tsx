@@ -12,19 +12,24 @@ export default function Onboarding() {
   const router = useRouter();
   const { profile, setProfile } = useStore();
   const needsGoal = !profile.goal.trim();
-  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl ?? "");
   const [importing, setImporting] = useState<"cv" | "linkedin" | null>(null);
   const [importNote, setImportNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Claude fills in goal + background from your own LinkedIn profile or CV.
-  const runImport = async (kind: "cv" | "linkedin", label: string, load: () => Promise<ImportedProfile>) => {
+  const runImport = async (
+    kind: "cv" | "linkedin",
+    label: string,
+    load: () => Promise<ImportedProfile>,
+    extra: Partial<typeof profile> = {},
+  ) => {
     setError(null);
     setImportNote(null);
     setImporting(kind);
     try {
       const { goal, background, tip } = await load();
-      setProfile({ ...profile, goal, background });
+      setProfile({ ...profile, ...extra, goal, background });
       setImportNote(tip ? `Filled in from your ${label}. Tip: ${tip}` : `Filled in from your ${label}. Edit anything that's off.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Import failed.");
@@ -36,7 +41,7 @@ export default function Onboarding() {
   const importFromLinkedin = () => {
     const url = parseLinkedinProfileUrl(linkedinUrl);
     if (!url) return setError("Paste your LinkedIn profile link, like linkedin.com/in/your-name.");
-    return runImport("linkedin", "LinkedIn profile", () => importLinkedin(url));
+    return runImport("linkedin", "LinkedIn profile", () => importLinkedin(url), { linkedinUrl: url });
   };
 
   const pickCv = async () => {
