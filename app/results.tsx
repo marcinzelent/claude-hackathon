@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Linking, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { toJsonl } from "../src/luma/normalize";
-import { rankGuests } from "../src/rank/client";
+import { rankGuests } from "../src/api";
 import { useStore } from "../src/store";
 import type { RankedGuest } from "../src/types";
 import { Button, colors, scoreColor } from "../src/ui";

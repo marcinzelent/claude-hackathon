@@ -1,7 +1,9 @@
+import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import sampleGuests from "../data/sample-guests.json";
+import { importCv } from "../src/api";
 import { LumaError, useLuma } from "../src/luma/LumaBridge";
 import { parseEventSlug, parsePastedGuests } from "../src/luma/normalize";
 import { useStore } from "../src/store";
@@ -19,7 +21,27 @@ export default function Home() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [importing, setImporting] = useState(false);
+  const [importNote, setImportNote] = useState<string | null>(null);
+
   const needsGoal = !profile.goal.trim();
+
+  const pickCv = async () => {
+    setError(null);
+    setImportNote(null);
+    const picked = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    if (picked.canceled || !picked.assets[0]) return;
+    setImporting(true);
+    try {
+      const { goal, background, tip } = await importCv(picked.assets[0]);
+      setProfile({ goal, background });
+      setImportNote(tip ? `Filled in from your CV. Tip: ${tip}` : "Filled in from your CV. Edit anything that's off.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't read that file.");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const go = (eventName: string, guests: Guest[]) => {
     setGuests(eventName, guests);
@@ -64,6 +86,12 @@ export default function Home() {
           Going to an AI meetup to find your next job? Tell us what you're after. Claude reads the guest list and
           tells you who to meet, why, how to start the conversation, and what you can learn from them.
         </Text>
+
+        <Button title="Import my CV or LinkedIn PDF" variant="secondary" onPress={pickCv} loading={importing} />
+        <Text style={styles.hint}>
+          LinkedIn PDF: on linkedin.com (desktop), open your profile, then Resources (or More), then Save to PDF.
+        </Text>
+        {importNote && <Text style={styles.note}>{importNote}</Text>}
 
         <Label>What job are you looking for?</Label>
         <TextInput
@@ -150,4 +178,5 @@ const styles = StyleSheet.create({
   status: { marginTop: 8, color: colors.muted, textAlign: "center" },
   hint: { marginTop: 10, color: colors.muted, fontSize: 13, lineHeight: 18 },
   error: { marginTop: 12, color: colors.error, fontSize: 15 },
+  note: { marginTop: 8, color: colors.good, fontSize: 14, lineHeight: 19 },
 });

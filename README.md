@@ -8,7 +8,7 @@
 - **What the demo lets them do:** paste a Luma event link, and Claude ranks the guest list for *their* goal. For each person it says why they're worth meeting, gives a conversation opener, and names one thing about AI work they could learn from them.
 
 ## What it does
-1. You type the job you want and a line about your background.
+1. You upload your CV or LinkedIn PDF (on linkedin.com: your profile → Resources/More → Save to PDF), and Claude fills in the job you should look for and your background. You can also type them.
 2. You load the guests:
    - **From Luma (mobile app):** sign in to Luma once inside the app, then paste an event link you're registered for.
    - **Sample event:** a fake Berlin AI meetup, used for the demo.
@@ -19,6 +19,7 @@
 ## How Claude is used
 - **Model:** `claude-opus-5-5` through the Anthropic TypeScript SDK, with structured outputs (a Zod schema) so the app always gets valid JSON back. Server-side refusal fallbacks are switched on (`fallbacks: "default"`).
 - **What Claude reads:** your goal and background, plus each guest's name, short bio and *which* links they listed. It doesn't get the link URLs.
+- **CV import** (`app/api/profile+api.ts`, prompt in `prompts/cvImport.ts`): Claude reads the uploaded PDF and suggests your target role and a short background, leaving out contact details. The PDF isn't stored.
 - **What Claude produces:** a score, a one-line reason, a conversation opener and a learning tip for every guest. It's told never to invent employers or titles, and to say so plainly when a profile is thin.
 - **Where:** the call runs in a server route (`app/api/rank+api.ts`), so the API key never reaches the phone. The prompt lives in `prompts/rank.ts`.
 
@@ -51,8 +52,9 @@ Paste mode always works as a fallback.
 | `app/index.tsx` | Home screen: your goal, event link, sample and paste options |
 | `app/results.tsx` | Ranked guest cards and JSONL export |
 | `app/login.tsx` | Luma sign-in inside the app |
-| `app/api/rank+api.ts` | Server route that calls Claude |
-| `prompts/rank.ts` | The Claude prompt (tweak it here) |
+| `app/api/rank+api.ts` | Server route that calls Claude to rank guests |
+| `app/api/profile+api.ts` | Server route where Claude reads your CV PDF |
+| `prompts/` | The Claude prompts (tweak them here) |
 | `src/luma/` | Luma bridge (hidden WebView), endpoint config and response parsing |
 | `data/sample-guests.json` | Fake guests for the demo |
 | `tests/` | Unit tests for parsing (Vitest) |
@@ -78,6 +80,7 @@ Teams of 5 (at least 1 builder, 1 product or design, 1 domain expert; plus found
 - [Expo](https://expo.dev) and [Expo Router](https://docs.expo.dev/router/introduction/)
 - [React Native](https://reactnative.dev) and [react-native-web](https://necolas.github.io/react-native-web/)
 - [react-native-webview](https://github.com/react-native-webview/react-native-webview)
+- [expo-document-picker](https://docs.expo.dev/versions/latest/sdk/document-picker/)
 - [AsyncStorage](https://github.com/react-native-async-storage/async-storage)
 - [Zod](https://zod.dev) and [Vitest](https://vitest.dev)
 - [Luma](https://luma.com) (event data, through the user's own signed-in session)
